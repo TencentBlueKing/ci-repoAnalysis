@@ -4,4 +4,4 @@
 
 [golang-sdk](https://github.com/TencentBlueKing/ci-repoAnalysis/tree/master/analysis-tool-sdk-golang/)
 
-工具接入参考[开发文档](https://github.com/TencentBlueKing/ci-repoAnalysis/tree/master/doc/development.md)
+工具接入参考[开发文档](https://github.com/TencentBlueKing/ci-repoAnalysis/tree/master/docs/development.md)
