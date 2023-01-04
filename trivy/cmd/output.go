@@ -1,4 +1,4 @@
-package trivy
+package cmd
 
 import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"

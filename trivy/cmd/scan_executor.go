@@ -8,7 +8,6 @@ import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
 	"github.com/TencentBlueKing/ci-repoAnalysis/trivy/constant"
-	"github.com/TencentBlueKing/ci-repoAnalysis/trivy/trivy"
 	"io"
 	"net/http"
 	"os"
@@ -92,10 +91,10 @@ func transformOutputJson() (*object.ToolOutput, error) {
 		return nil, err
 	}
 
-	trivyOutput := new(trivy.Output)
+	trivyOutput := new(Output)
 	if err := json.Unmarshal(trivyOutputContent, trivyOutput); err != nil {
 		return nil, err
 	}
 
-	return object.NewOutput(object.StatusSuccess, trivy.ConvertToToolResults(trivyOutput)), nil
+	return object.NewOutput(object.StatusSuccess, ConvertToToolResults(trivyOutput)), nil
 }
