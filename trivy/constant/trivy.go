@@ -20,6 +20,9 @@ const FlagSecurityChecks = "--security-checks"
 // FlagSkipDbUpdate 跳过更新trivy.db
 const FlagSkipDbUpdate = "--skip-db-update"
 
+// FlagSkipJavaDbUpdate 跳过java漏洞库更新
+const FlagSkipJavaDbUpdate = "--skip-java-db-update"
+
 // FlagOfflineScan 离线扫描
 const FlagOfflineScan = "--offline-scan"
 
@@ -36,10 +39,13 @@ const FlagOutput = "-o"
 const CacheDir = "/root/.cache/trivy"
 
 // DbCacheDir trivy.db缓存目录
-const DbCacheDir = "/root/.cache/trivy/db"
+const DbCacheDir = "/root/.cache/trivy"
 
-// DbFilename trivy.db文件名
-const DbFilename = "trivy.db"
+// DbDir 漏洞库存放目录
+const DbDir = "db"
+
+// JavaDbDir java漏洞库存放目录
+const JavaDbDir = "java-db"
 
 // FormatJson json输出格式
 const FormatJson = "json"

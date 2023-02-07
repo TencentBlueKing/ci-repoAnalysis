@@ -6,4 +6,4 @@
 
 1. 在trivy目录下执行命令构建分析工具镜像`go mod download && go build && docker build . -t bkrepo-trivy:0.0.1`
 2. 将构建好的镜像推送到镜像仓库
-3. 在蓝鲸制品库Admin中配置Standard类型的扫描器，并添加`STRING`类型的参数`dbDownloadUrl`指定漏洞库下载地址
+3. 在蓝鲸制品库Admin中配置Standard类型的扫描器，并添加`STRING`类型的参数`dbDownloadUrl`与`javaDbDownloadUrl`指定trivy漏洞库`db.tar.gz`与`javadb.tar.gz`的下载地址
