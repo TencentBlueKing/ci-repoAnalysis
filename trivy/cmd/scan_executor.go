@@ -26,7 +26,9 @@ func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*objec
 	if err != nil {
 		return nil, err
 	}
-	if err := execTrivy(file.Name(), maxTime); err != nil {
+	scanSensitive, _ := config.GetBoolArg("scanSensitive")
+
+	if err := execTrivy(file.Name(), maxTime, scanSensitive); err != nil {
 		return nil, err
 	}
 	return transformOutputJson()
@@ -55,7 +57,7 @@ func downloadDB(config *object.ToolConfig) error {
 	return nil
 }
 
-func execTrivy(fileName string, maxTime int64) error {
+func execTrivy(fileName string, maxTime int64, scanSensitive bool) error {
 	// trivy --cache-dir /root/.cache/trivy image --input filePath -f json
 	//       -o /bkrepo/workspace/trivy-output.json --skip-db-update --offline-scan
 
@@ -69,6 +71,11 @@ func execTrivy(fileName string, maxTime int64) error {
 		constant.FlagSkipDbUpdate,
 		constant.FlagOfflineScan,
 	}
+
+	if !scanSensitive {
+		args = append(args, constant.FlagSecurityChecks, constant.CheckVuln)
+	}
+
 	cmd := exec.Command(constant.CmdTrivy, args...)
 	util.Info(cmd.String())
 
