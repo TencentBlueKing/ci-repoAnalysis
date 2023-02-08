@@ -47,6 +47,12 @@ const DbDir = "db"
 // JavaDbDir java漏洞库存放目录
 const JavaDbDir = "java-db"
 
+// FlagSecretConfig 敏感信息规则配置文件
+const FlagSecretConfig = "--secret-config"
+
+// SecretRuleFilePath 敏感信息规则文件路径
+const SecretRuleFilePath = "/rule.yaml"
+
 // FormatJson json输出格式
 const FormatJson = "json"
 

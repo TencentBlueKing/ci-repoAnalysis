@@ -151,6 +151,10 @@ func execTrivy(fileName string, maxTime int64, scanSensitive bool) error {
 		args = append(args, constant.FlagSecurityChecks, constant.CheckVuln)
 	}
 
+	if _, err := os.Stat(constant.SecretRuleFilePath); !errors.Is(err, os.ErrNotExist) {
+		args = append(args, constant.FlagSecretConfig, constant.SecretRuleFilePath)
+	}
+
 	cmd := exec.Command(constant.CmdTrivy, args...)
 	util.Info(cmd.String())
 
