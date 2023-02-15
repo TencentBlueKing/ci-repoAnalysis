@@ -79,6 +79,7 @@ func NewFailedOutput(err error) *ToolOutput {
 	}
 }
 
+// NewOutput 创建工具标准输出
 func NewOutput(status TaskStatus, result *Result) *ToolOutput {
 	return &ToolOutput{
 		Status: status,

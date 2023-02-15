@@ -17,8 +17,10 @@ import (
 	"path/filepath"
 )
 
+// TrivyExecutor Trivy分析工具执行器实现
 type TrivyExecutor struct{}
 
+// Execute 执行分析
 func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
 	if err := downloadAllDB(config); err != nil {
 		return nil, err
