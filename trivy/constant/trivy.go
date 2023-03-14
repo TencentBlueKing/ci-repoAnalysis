@@ -62,4 +62,11 @@ const OutputPath = util.WorkDir + "/trivy-output.json"
 // CheckVuln 检查安全漏洞
 const CheckVuln = "vuln"
 
+// ClassSecret 敏感信息结果类型
 const ClassSecret = "secret"
+
+// ArgDbDownloadUrl 漏洞库下载地址
+const ArgDbDownloadUrl = "dbDownloadUrl"
+
+// ArgJavaDbDownloadUrl java漏洞库下载地址
+const ArgJavaDbDownloadUrl = "javaDbDownloadUrl"
