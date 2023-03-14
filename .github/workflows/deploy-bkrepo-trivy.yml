@@ -6,7 +6,7 @@ on:
       - "trivy/v*"
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: bkrepo-trivy
+  IMAGE_NAME: ${{ github.repository }}/bkrepo-trivy
   WORK_DIR: ./trivy
 
 jobs:
