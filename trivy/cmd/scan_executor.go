@@ -22,8 +22,11 @@ type TrivyExecutor struct{}
 
 // Execute 执行分析
 func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
-	if err := downloadAllDB(config); err != nil {
-		return nil, err
+	offline := len(config.GetStringArg(constant.ArgDbDownloadUrl)) > 0
+	if offline {
+		if err := downloadAllDB(config); err != nil {
+			return nil, err
+		}
 	}
 	maxTime, err := config.GetIntArg("maxTime")
 	if err != nil {
@@ -31,18 +34,18 @@ func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*objec
 	}
 	scanSensitive, _ := config.GetBoolArg("scanSensitive")
 
-	if err := execTrivy(file.Name(), maxTime, scanSensitive); err != nil {
+	if err := execTrivy(file.Name(), maxTime, scanSensitive, offline); err != nil {
 		return nil, err
 	}
 	return transformOutputJson()
 }
 
 func downloadAllDB(config *object.ToolConfig) error {
-	url := config.GetStringArg("dbDownloadUrl")
+	url := config.GetStringArg(constant.ArgDbDownloadUrl)
 	if err := downloadDB(url, constant.DbDir); err != nil {
 		return err
 	}
-	javaDbUrl := config.GetStringArg("javaDbDownloadUrl")
+	javaDbUrl := config.GetStringArg(constant.ArgJavaDbDownloadUrl)
 	if err := downloadDB(javaDbUrl, constant.JavaDbDir); err != nil {
 		return err
 	}
@@ -133,7 +136,7 @@ func extract(tarPath string) error {
 	return nil
 }
 
-func execTrivy(fileName string, maxTime int64, scanSensitive bool) error {
+func execTrivy(fileName string, maxTime int64, scanSensitive bool, offline bool) error {
 	// trivy --cache-dir /root/.cache/trivy image --input filePath -f json
 	//       -o /bkrepo/workspace/trivy-output.json --skip-db-update --offline-scan
 
@@ -144,9 +147,10 @@ func execTrivy(fileName string, maxTime int64, scanSensitive bool) error {
 		constant.FlagFormat, constant.FormatJson,
 		constant.FlagOutput, constant.OutputPath,
 		constant.FlagTimeout, fmt.Sprintf("%dms", maxTime),
-		constant.FlagSkipDbUpdate,
-		constant.FlagSkipJavaDbUpdate,
-		constant.FlagOfflineScan,
+	}
+
+	if offline {
+		args = append(args, constant.FlagSkipDbUpdate, constant.FlagSkipJavaDbUpdate, constant.FlagOfflineScan)
 	}
 
 	if !scanSensitive {
