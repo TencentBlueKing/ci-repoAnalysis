@@ -4,7 +4,7 @@
 ## 快速上手
 ### 引入sdk
 ```gotemplate
-    require github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang v0.0.9
+    require github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang v0.0.11
 ```
 ### 使用示例
 只需要实现Executor接口，再调用Analyze(executor)函数即可，参考下方示例
