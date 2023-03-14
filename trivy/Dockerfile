@@ -1,5 +1,5 @@
 FROM aquasec/trivy:0.37.1
 
-COPY trivy /trivy
-RUN chmod +x /trivy
+COPY bkrepo-trivy /bkrepo-trivy
+RUN chmod +x /bkrepo-trivy
 ENTRYPOINT []
