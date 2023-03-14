@@ -29,7 +29,11 @@ jobs:
           go-version: 1.19
 
       - name: Build
-        run: go mod download && go build -v -o bkrepo-trivy
+        run: |
+          export CGO_ENABLED=0
+          export GOOS=linux    
+          export GOARCH=amd64
+          go build -v -o bkrepo-trivy
 
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
