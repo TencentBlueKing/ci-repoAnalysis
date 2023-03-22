@@ -4,56 +4,9 @@ on:
   push:
     tags:
       - "trivy/v*"
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/bkrepo-trivy
-  WORK_DIR: ./trivy
 
 jobs:
   build-and-push-image:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ env.WORK_DIR }}
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-
-      - name: Build
-        run: |
-          export CGO_ENABLED=0
-          export GOOS=linux    
-          export GOARCH=amd64
-          go build -v -o bkrepo-trivy
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@05d22bf31770de02e20c67c70365453e00227f61
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=match,pattern=trivy/v(\d+\.\d+\.\d+),group=1
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
-        with:
-          context: ${{ env.WORK_DIR }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+    uses: ./.github/workflows/deploy-golang-analysis-tool.yml
+    with:
+      tool_name: trivy

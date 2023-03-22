@@ -12,7 +12,7 @@
 
 二、手动构建镜像
 
-1. 在trivy目录下执行命令构建分析工具镜像`go mod download && go build -o bkrepo-trivy && docker build . -t bkrepo-trivy:0.0.1`
+1. 在trivy目录下执行命令构建分析工具镜像`go mod download && go build -o bkrepo-trivy ./cmd/main.go && docker build . -t bkrepo-trivy:0.0.1`
 2. 将构建好的镜像推送到镜像仓库
 
 ---
