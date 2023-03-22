@@ -41,7 +41,7 @@ func GenerateInputFile(toolInput *object.ToolInput) (*os.File, error) {
 	if toolInput.FilePath != "" {
 		return os.Open(toolInput.FilePath)
 	}
-	if err := os.MkdirAll(WorkDir, 0666); err != nil {
+	if err := os.MkdirAll(WorkDir, 0766); err != nil {
 		return nil, err
 	}
 
