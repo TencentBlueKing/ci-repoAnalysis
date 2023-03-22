@@ -1,4 +1,4 @@
-package cmd
+package pkg
 
 import (
 	"archive/tar"
@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
-	"github.com/TencentBlueKing/ci-repoAnalysis/trivy/constant"
+	"github.com/TencentBlueKing/ci-repoAnalysis/trivy/pkg/constant"
 	"io"
 	"net/http"
 	"os"
