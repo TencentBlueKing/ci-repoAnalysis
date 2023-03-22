@@ -1,8 +1,8 @@
-package cmd
+package pkg
 
 import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
-	"github.com/TencentBlueKing/ci-repoAnalysis/trivy/constant"
+	"github.com/TencentBlueKing/ci-repoAnalysis/trivy/pkg/constant"
 	"strings"
 	"time"
 )
