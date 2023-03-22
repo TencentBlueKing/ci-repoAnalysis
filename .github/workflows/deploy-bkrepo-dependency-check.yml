@@ -1,0 +1,12 @@
+name: Create and publish bkrepo-dependency-check image
+
+on:
+  push:
+    tags:
+      - "dependency-check/v*"
+
+jobs:
+  build-and-push-image:
+    uses: ./.github/workflows/deploy-golang-analysis-tool.yml
+    with:
+      tool_name: dependency-check
