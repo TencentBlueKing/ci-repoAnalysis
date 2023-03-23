@@ -3,12 +3,15 @@ package util
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -53,7 +56,7 @@ func GenerateInputFile(toolInput *object.ToolInput) (*os.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		reader, err := download(fileUrl.Url)
+		reader, err := Download(fileUrl.Url)
 		defer reader.Close()
 		if err != nil {
 			return nil, err
@@ -66,10 +69,84 @@ func GenerateInputFile(toolInput *object.ToolInput) (*os.File, error) {
 	}
 }
 
+// ExtractTarUrl 从指定url解压到指定路径
+func ExtractTarUrl(url string, dstDir string, perm fs.FileMode) error {
+	Info("extracting url %s to %s", url, dstDir)
+	reader, err := Download(url)
+	defer reader.Close()
+	if err != nil {
+		return err
+	}
+	return Extract(reader, dstDir, perm)
+}
+
+// ExtractTarFile 解压文件到指定路径
+func ExtractTarFile(tarPath string, dstDir string, perm fs.FileMode) error {
+	Info("extracting file %s to %s", tarPath, dstDir)
+	fileReader, err := os.Open(tarPath)
+	if err != nil {
+		return err
+	}
+	defer fileReader.Close()
+	return Extract(fileReader, dstDir, perm)
+}
+
+// Extract 解压tar.gz到指定路径
+func Extract(reader io.Reader, dstDir string, perm fs.FileMode) error {
+	if _, err := os.Stat(dstDir); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(dstDir, perm); err != nil {
+			return err
+		}
+	}
+
+	uncompressedStream, err := gzip.NewReader(reader)
+	if err != nil {
+		return err
+	}
+	defer uncompressedStream.Close()
+	tarReader := tar.NewReader(uncompressedStream)
+
+	for true {
+		header, err := tarReader.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return err
+		}
+
+		p := filepath.Join(dstDir, header.Name)
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.Mkdir(p, perm); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			outFile, err := os.Create(p)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				return err
+			}
+			if err := outFile.Close(); err != nil {
+				return err
+			}
+		default:
+			return errors.New(fmt.Sprintf("unknown tar type %d in %s", header.Typeflag, header.Name))
+		}
+	}
+
+	Info("extract to %s success", dstDir)
+	return nil
+}
+
 func generateImageTar(toolInput *object.ToolInput) (*os.File, error) {
 	// 获取manifest
 	manifestUrl := toolInput.FileUrls[0]
-	manifestResponse, err := download(manifestUrl.Url)
+	manifestResponse, err := Download(manifestUrl.Url)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +217,7 @@ func generateImageTar(toolInput *object.ToolInput) (*os.File, error) {
 }
 
 func loadLayerToTar(name string, fileUrl *object.FileUrl, tarWriter *tar.Writer) error {
-	layerRes, err := download(fileUrl.Url)
+	layerRes, err := Download(fileUrl.Url)
 	if err != nil {
 		return err
 	}
@@ -178,14 +255,15 @@ func putArchiveEntry(name string, size int64, reader io.Reader, tarWriter *tar.W
 	return nil
 }
 
-func download(url string) (io.ReadCloser, error) {
-	Info("downloading " + url)
+// Download 从指定url获取输入流
+func Download(url string) (io.ReadCloser, error) {
+	Info("downloading %s", url)
 	response, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, errors.New("download failed")
+		return nil, errors.New("download failed, status: " + response.Status)
 	}
 
 	return response.Body, nil
