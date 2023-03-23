@@ -12,10 +12,27 @@ type Report struct {
 
 // Dependency 检出的依赖及漏洞
 type Dependency struct {
-	FileName        string          `json:"fileName"` // 被扫描的的文件名
-	FilePath        string          `json:"filePath"` // 在被扫描包中的路径
-	Packages        []Package       `json:"packages"`
-	Vulnerabilities []Vulnerability `json:"vulnerabilities"`
+	FileName          string             `json:"fileName"` // 被扫描的的文件名
+	FilePath          string             `json:"filePath"` // 在被扫描包中的路径
+	EvidenceCollected *EvidenceCollected `json:"evidenceCollected"`
+	Packages          []Package          `json:"packages"`
+	Vulnerabilities   []Vulnerability    `json:"vulnerabilities"`
+}
+
+// EvidenceCollected 漏洞判断依据
+type EvidenceCollected struct {
+	VendorEvidence  []Evidence `json:"vendorEvidence"`  // 厂商依据
+	ProductEvidence []Evidence `json:"productEvidence"` // 产品依据
+	VersionEvidence []Evidence `json:"versionEvidence"` // 版本依据
+}
+
+// Evidence 依据
+type Evidence struct {
+	Type       string `json:"type"`
+	Confidence string `json:"confidence"`
+	Source     string `json:"source"`
+	Name       string `json:"name"`
+	Value      string `json:"value"`
 }
 
 // Package 检出漏洞的包
@@ -77,7 +94,7 @@ func Convert(report *Report) *object.Result {
 
 	for i := range report.Dependencies {
 		dependency := report.Dependencies[i]
-		pkgName, pkgVersion := parsePkg(dependency.Packages)
+		pkgName, pkgVersion := parsePkg(dependency.Packages, dependency.EvidenceCollected)
 		for k := range dependency.Vulnerabilities {
 			vul := dependency.Vulnerabilities[k]
 			securityResult := convertToSecurityResult(&vul, dependency.FilePath, pkgName, pkgVersion)
@@ -116,14 +133,42 @@ func convertToSecurityResult(
 	}
 }
 
-func parsePkg(packages []Package) (string, string) {
+func parsePkg(packages []Package, collected *EvidenceCollected) (string, string) {
 	if len(packages) == 0 {
-		return "", ""
+		return parsePkgFromEvidence(collected)
 	} else {
 		pkg := packages[0]
 		pkgParts := strings.Split(pkg.Id, "/")
 		versionParts := strings.Split(pkgParts[len(pkgParts)-1], "@")
 		version := versionParts[len(versionParts)-1]
-		return strings.Join(pkgParts[1:len(pkgParts)-1], ":") + ":" + versionParts[0], version
+		groupId := strings.Join(pkgParts[1:len(pkgParts)-1], ":")
+		artifactId := versionParts[0]
+		if len(groupId) > 0 {
+			return groupId + ":" + artifactId, version
+		} else {
+			return artifactId, version
+		}
+	}
+}
+
+func parsePkgFromEvidence(collected *EvidenceCollected) (string, string) {
+	var vendor string
+	var product string
+	var version string
+
+	if len(collected.VendorEvidence) > 0 {
+		vendor = collected.VendorEvidence[0].Value
+	}
+	if len(collected.ProductEvidence) > 0 {
+		product = collected.ProductEvidence[0].Value
+	}
+	if len(collected.VersionEvidence) > 0 {
+		version = collected.VersionEvidence[0].Value
+	}
+
+	if vendor != product {
+		return vendor + ":" + product, version
+	} else {
+		return product, version
 	}
 }
