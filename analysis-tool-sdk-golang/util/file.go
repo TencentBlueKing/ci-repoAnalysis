@@ -57,10 +57,10 @@ func GenerateInputFile(toolInput *object.ToolInput) (*os.File, error) {
 			return nil, err
 		}
 		reader, err := Download(fileUrl.Url)
-		defer reader.Close()
 		if err != nil {
 			return nil, err
 		}
+		defer reader.Close()
 		if _, err := writeAndCheckSha256(reader, file, fileUrl.Sha256); err != nil {
 			return nil, err
 		}
@@ -73,10 +73,10 @@ func GenerateInputFile(toolInput *object.ToolInput) (*os.File, error) {
 func ExtractTarUrl(url string, dstDir string, perm fs.FileMode) error {
 	Info("extracting url %s to %s", url, dstDir)
 	reader, err := Download(url)
-	defer reader.Close()
 	if err != nil {
 		return err
 	}
+	defer reader.Close()
 	return Extract(reader, dstDir, perm)
 }
 
