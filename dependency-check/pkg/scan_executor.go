@@ -1,13 +1,10 @@
 package pkg
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
 	"os"
-	"os/exec"
 )
 
 // DependencyCheckExecutor DependencyCheck分析器
@@ -15,7 +12,21 @@ type DependencyCheckExecutor struct{}
 
 // Execute 执行分析
 func (e DependencyCheckExecutor) Execute(config *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
-	reportFile, err := doExecute(file.Name())
+	offline, err := config.GetBoolArg(ConfigOffline)
+	if err != nil {
+		return nil, err
+	}
+
+	// 下载漏洞库
+	dbUrl := config.GetStringArg(ConfigDbUrl)
+	if len(dbUrl) > 0 {
+		if err := util.ExtractTarUrl(dbUrl, DirDependencyCheckData, 0555); err != nil {
+			return nil, err
+		}
+	}
+
+	// 执行扫描
+	reportFile, err := doExecute(file.Name(), offline)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +34,7 @@ func (e DependencyCheckExecutor) Execute(config *object.ToolConfig, file *os.Fil
 }
 
 // doExecute 执行扫描，扫描成功后返回报告路径
-func doExecute(inputFile string) (string, error) {
+func doExecute(inputFile string, offline bool) (string, error) {
 	// dependency-check.sh --scan /src --format JSON --out /report
 
 	const reportFile = "/report"
@@ -33,19 +44,16 @@ func doExecute(inputFile string) (string, error) {
 		"--out", reportFile,
 	}
 
-	cmd := exec.Command(CMDDependencyCheck, args...)
-	util.Info(cmd.String())
-
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		return "", errors.New("error: " + err.Error() + "\n" + stderr.String())
+	if offline {
+		args = append(
+			args, "--noupdate",
+			"--disableYarnAudit", "--disablePnpmAudit", "--disableNodeAudit", "--disableOssIndex", "--disableCentral")
 	}
-	util.Info(out.String())
-	util.Info(stderr.String())
+
+	if err := util.ExecAndLog(CMDDependencyCheck, args); err != nil {
+		return "", err
+	}
+
 	return reportFile + "/dependency-check-report.json", nil
 }
 
