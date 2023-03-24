@@ -9,6 +9,7 @@ import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/trivy/pkg/constant"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // TrivyExecutor Trivy分析工具执行器实现
@@ -22,13 +23,8 @@ func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*objec
 			return nil, err
 		}
 	}
-	maxTime, err := config.GetIntArg("maxTime")
-	if err != nil {
-		return nil, err
-	}
-	scanSensitive, _ := config.GetBoolArg("scanSensitive")
 
-	if err := execTrivy(file.Name(), maxTime, scanSensitive, offline); err != nil {
+	if err := execTrivy(file.Name(), offline, config); err != nil {
 		return nil, err
 	}
 	return transformOutputJson()
@@ -51,9 +47,17 @@ func downloadAllDB(config *object.ToolConfig) error {
 	return nil
 }
 
-func execTrivy(fileName string, maxTime int64, scanSensitive bool, offline bool) error {
+func execTrivy(fileName string, offline bool, config *object.ToolConfig) error {
 	// trivy --cache-dir /root/.cache/trivy image --input filePath -f json
 	//       -o /bkrepo/workspace/trivy-output.json --skip-db-update --offline-scan
+
+	maxTime, err := config.GetIntArg("maxTime")
+	if err != nil {
+		return err
+	}
+	scanSensitive, _ := config.GetBoolArg("scanSensitive")
+	scanLicense, _ := config.GetBoolArg("scanLicense")
+	licenseFull, _ := config.GetBoolArg("licenseFull")
 
 	args := []string{
 		constant.FlagCacheDir, constant.CacheDir,
@@ -68,10 +72,21 @@ func execTrivy(fileName string, maxTime int64, scanSensitive bool, offline bool)
 		args = append(args, constant.FlagSkipDbUpdate, constant.FlagSkipJavaDbUpdate, constant.FlagOfflineScan)
 	}
 
-	if !scanSensitive {
-		args = append(args, constant.FlagSecurityChecks, constant.CheckVuln)
+	// 设置要使用的扫描器
+	scanners := []string{constant.ScannerVuln}
+	if scanSensitive {
+		scanners = append(scanners, constant.ScannerSecret)
+	}
+	if scanLicense {
+		scanners = append(scanners, constant.ScannerLicense)
+	}
+	args = append(args, constant.FlagScanners, strings.Join(scanners, ","))
+
+	if scanLicense && licenseFull {
+		args = append(args, constant.FlagLicenseFull)
 	}
 
+	// 指定敏感信息规则
 	if _, err := os.Stat(constant.SecretRuleFilePath); !errors.Is(err, os.ErrNotExist) {
 		args = append(args, constant.FlagSecretConfig, constant.SecretRuleFilePath)
 	}

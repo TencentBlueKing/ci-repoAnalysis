@@ -22,6 +22,7 @@ type Result struct {
 	Type            string          `json:"Type"`
 	Vulnerabilities []Vulnerability `json:"Vulnerabilities"`
 	Secrets         []Secret        `json:"Secrets"`
+	Licenses        []License       `json:"Licenses"`
 }
 
 // Vulnerability trivy扫描漏洞
@@ -77,6 +78,17 @@ type Secret struct {
 	Match     string `json:"Match"`
 }
 
+// License trivy许可扫描结果
+type License struct {
+	Severity   string  `json:"Severity"`
+	Category   string  `json:"Category"`
+	PkgName    string  `json:"PkgName"`
+	FilePath   string  `json:"FilePath"`
+	Name       string  `json:"Name"`
+	Confidence float64 `json:"Confidence"`
+	Link       string  `json:"Link"`
+}
+
 // ConvertToToolResults 转换trivy扫描结果为工具框架标准扫描结果
 func ConvertToToolResults(output *Output) *object.Result {
 	toolResults := new(object.Result)
@@ -90,6 +102,11 @@ func ConvertToToolResults(output *Output) *object.Result {
 			for _, secret := range result.Secrets {
 				toolResults.SensitiveResults =
 					append(toolResults.SensitiveResults, *ConvertToSensitiveResult(&secret, result.Target))
+			}
+		} else if result.Class == constant.ClassLicense {
+			for _, license := range result.Licenses {
+				toolResults.LicenseResults =
+					append(toolResults.LicenseResults, *ConvertToLicenseResult(&license, result.Target))
 			}
 		} else {
 			for _, vulnerability := range result.Vulnerabilities {
@@ -132,5 +149,20 @@ func ConvertToSensitiveResult(secret *Secret, path string) *object.SensitiveResu
 		Path:    path,
 		Type:    secret.Category,
 		Content: secret.Match,
+	}
+}
+
+// ConvertToLicenseResult 转换trivy许可扫描结果为工具框架许可扫描结果
+func ConvertToLicenseResult(license *License, path string) *object.LicenseResult {
+	var licensePath string
+	if len(license.FilePath) > 0 {
+		licensePath = license.FilePath
+	} else {
+		licensePath = path + " : " + license.PkgName
+	}
+	return &object.LicenseResult{
+		LicenseName: license.Name,
+		Path:        licensePath,
+		PkgName:     license.PkgName,
 	}
 }
