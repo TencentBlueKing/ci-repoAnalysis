@@ -14,8 +14,11 @@ const FlagInput = "--input"
 // FlagCacheDir 指定trivy缓存目录
 const FlagCacheDir = "--cache-dir"
 
-// FlagSecurityChecks 指定扫描类型
-const FlagSecurityChecks = "--security-checks"
+// FlagScanners 指定使用的扫描器
+const FlagScanners = "--scanners"
+
+// FlagLicenseFull 指定是否扫描所有文本文件
+const FlagLicenseFull = "--license-full"
 
 // FlagSkipDbUpdate 跳过更新trivy.db
 const FlagSkipDbUpdate = "--skip-db-update"
@@ -59,11 +62,20 @@ const FormatJson = "json"
 // OutputPath 输出文件路径
 const OutputPath = util.WorkDir + "/trivy-output.json"
 
-// CheckVuln 检查安全漏洞
-const CheckVuln = "vuln"
+// ScannerVuln 漏洞扫描器
+const ScannerVuln = "vuln"
+
+// ScannerSecret 敏感信息扫描器
+const ScannerSecret = "secret"
+
+// ScannerLicense 许可证扫描器
+const ScannerLicense = "license"
 
 // ClassSecret 敏感信息结果类型
 const ClassSecret = "secret"
+
+// ClassLicense 许可扫描结果
+const ClassLicense = "license"
 
 // ArgDbDownloadUrl 漏洞库下载地址
 const ArgDbDownloadUrl = "dbDownloadUrl"

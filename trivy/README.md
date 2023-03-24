@@ -18,4 +18,14 @@
 ---
 
 最后在蓝鲸制品库Admin中配置`Standard`类型的扫描器，
-启动命令为`/bkrepo-trivy`，参考trivy Air-Gapped Environment配置文档下载`db.tar.gz`和`javadb.tar.gz`传到制品分析服务可访问的路径，比如某个制品仓库中，并添加`STRING`类型的参数`dbDownloadUrl`与`javaDbDownloadUrl`指定trivy漏洞库`db.tar.gz`与`javadb.tar.gz`的下载地址
+启动命令为`/bkrepo-trivy`，参考trivy Air-Gapped Environment配置文档下载`db.tar.gz`和`javadb.tar.gz`传到制品分析服务可访问的路径，比如放在某个制品仓库中
+
+#### 制品库Admin中增加参数
+
+| 参数名               | 类型      | 默认值   | 说明                                                 |
+|-------------------|---------|-------|----------------------------------------------------|
+| dbDownloadUrl     | STRING  | 无     | 漏洞库db.tar.gz下载地址                                   |
+| javaDbDownloadUrl | STRING  | 无     | 漏洞库javadb.tar.gz下载地址                               |
+| scanSensitive     | BOOLEAN | false | 是否开启敏感信息扫描                                         |
+| scanLicense       | BOOLEAN | false | 是否开启License扫描，开启后会扫描apk、apt、npm、pip等安装的依赖包的License |
+| licenseFull       | BOOLEAN | false | 是否扫描所有文本文件License，开启后会导致扫描耗时增加                     |
