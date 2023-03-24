@@ -1,19 +1,13 @@
 package pkg
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
 	"github.com/TencentBlueKing/ci-repoAnalysis/trivy/pkg/constant"
-	"io"
-	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 )
 
@@ -41,98 +35,19 @@ func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*objec
 }
 
 func downloadAllDB(config *object.ToolConfig) error {
+	// download db
 	url := config.GetStringArg(constant.ArgDbDownloadUrl)
-	if err := downloadDB(url, constant.DbDir); err != nil {
+	dbDir := filepath.Join(constant.DbCacheDir, constant.DbDir)
+	if err := util.ExtractTarUrl(url, dbDir, 0770); err != nil {
 		return err
 	}
+
+	// download java db
 	javaDbUrl := config.GetStringArg(constant.ArgJavaDbDownloadUrl)
-	if err := downloadDB(javaDbUrl, constant.JavaDbDir); err != nil {
+	javaDbDir := filepath.Join(constant.DbCacheDir, constant.JavaDbDir)
+	if err := util.ExtractTarUrl(javaDbUrl, javaDbDir, 0770); err != nil {
 		return err
 	}
-	return nil
-}
-
-func downloadDB(url string, dbDir string) error {
-	response, err := http.DefaultClient.Get(url)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("download db to %s failed, status %s", dbDir, response.Status))
-	}
-	p := filepath.Join(constant.DbCacheDir, dbDir, "temp.tar")
-	if err := os.MkdirAll(filepath.Dir(p), 0666); err != nil {
-		return err
-	}
-	file, err := os.Create(p)
-	if err != nil {
-		return err
-	}
-	written, err := io.Copy(file, response.Body)
-	if err != nil {
-		return err
-	}
-	if err := file.Close(); err != nil {
-		return err
-	}
-	if err := extract(p); err != nil {
-		return err
-	}
-	if err := os.Remove(p); err != nil {
-		return err
-	}
-	util.Info("download db to %s success, size is %d", p, written)
-	return nil
-}
-
-func extract(tarPath string) error {
-	gzipStream, err := os.Open(tarPath)
-	if err != nil {
-		return err
-	}
-	defer gzipStream.Close()
-	uncompressedStream, err := gzip.NewReader(gzipStream)
-	if err != nil {
-		return err
-	}
-	defer uncompressedStream.Close()
-	tarReader := tar.NewReader(uncompressedStream)
-
-	dir := filepath.Dir(tarPath)
-	for true {
-		header, err := tarReader.Next()
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return err
-		}
-
-		p := filepath.Join(dir, header.Name)
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.Mkdir(p, 0444); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			outFile, err := os.Create(p)
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				return err
-			}
-			if err := outFile.Close(); err != nil {
-				return err
-			}
-		default:
-			return errors.New(fmt.Sprintf("unknown tar type %d in %s", header.Typeflag, header.Name))
-		}
-	}
-
 	return nil
 }
 
@@ -161,19 +76,9 @@ func execTrivy(fileName string, maxTime int64, scanSensitive bool, offline bool)
 		args = append(args, constant.FlagSecretConfig, constant.SecretRuleFilePath)
 	}
 
-	cmd := exec.Command(constant.CmdTrivy, args...)
-	util.Info(cmd.String())
-
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		return errors.New("error: " + err.Error() + "\n" + stderr.String())
+	if err := util.ExecAndLog(constant.CmdTrivy, args); err != nil {
+		return err
 	}
-	util.Info(out.String())
-	util.Info(stderr.String())
 	return nil
 }
 
