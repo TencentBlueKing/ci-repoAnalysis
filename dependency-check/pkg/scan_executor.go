@@ -20,7 +20,7 @@ func (e DependencyCheckExecutor) Execute(config *object.ToolConfig, file *os.Fil
 	// 下载漏洞库
 	dbUrl := config.GetStringArg(ConfigDbUrl)
 	if len(dbUrl) > 0 {
-		if err := util.ExtractTarUrl(dbUrl, DirDependencyCheckData, 0555); err != nil {
+		if err := util.ExtractTarUrl(dbUrl, DirDependencyCheckData, 0770); err != nil {
 			return nil, err
 		}
 	}
