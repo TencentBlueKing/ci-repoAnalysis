@@ -1,0 +1,12 @@
+name: Create and publish bkrepo-filepath-search image
+
+on:
+  push:
+    tags:
+      - "filepath-search/v*"
+
+jobs:
+  build-and-push-image:
+    uses: ./.github/workflows/deploy-golang-analysis-tool.yml
+    with:
+      tool_name: filepath-search
