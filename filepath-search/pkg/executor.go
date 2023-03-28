@@ -68,11 +68,10 @@ func scan(filepath string, regex string) ([]object.SecurityResult, error) {
 
 		if err := walk(l, func(filePath string, info os.FileInfo, reader io.Reader) error {
 			if reg.MatchString(filePath) {
-				vulId := "fp-" + filePath
 				securityResults = append(securityResults, object.SecurityResult{
-					VulId:       vulId,
-					CveId:       vulId,
-					VulName:     vulId,
+					VulId:       "filepath",
+					CveId:       "filepath",
+					VulName:     "filepath",
 					Path:        filePath,
 					PkgName:     filePath,
 					PkgVersions: []string{},
