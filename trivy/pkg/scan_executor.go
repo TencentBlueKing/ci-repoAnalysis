@@ -31,17 +31,18 @@ func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*objec
 }
 
 func downloadAllDB(config *object.ToolConfig) error {
+	downloader := &util.DefaultDownloader{}
 	// download db
 	url := config.GetStringArg(constant.ArgDbDownloadUrl)
 	dbDir := filepath.Join(constant.DbCacheDir, constant.DbDir)
-	if err := util.ExtractTarUrl(url, dbDir, 0770); err != nil {
+	if err := util.ExtractTarUrl(url, dbDir, 0770, downloader); err != nil {
 		return err
 	}
 
 	// download java db
 	javaDbUrl := config.GetStringArg(constant.ArgJavaDbDownloadUrl)
 	javaDbDir := filepath.Join(constant.DbCacheDir, constant.JavaDbDir)
-	if err := util.ExtractTarUrl(javaDbUrl, javaDbDir, 0770); err != nil {
+	if err := util.ExtractTarUrl(javaDbUrl, javaDbDir, 0770, downloader); err != nil {
 		return err
 	}
 	return nil
