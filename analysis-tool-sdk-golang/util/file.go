@@ -145,7 +145,42 @@ func Extract(reader io.Reader, dstDir string, perm fs.FileMode) error {
 
 func generateImageTar(toolInput *object.ToolInput) (*os.File, error) {
 	// 获取manifest
-	manifestUrl := toolInput.FileUrls[0]
+	manifest, err := loadManifest(&toolInput.FileUrls[0])
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建镜像tar包
+	imageFile, err := os.Create(filepath.Join(WorkDir, "image.tar"))
+	if err != nil {
+		return nil, err
+	}
+	tarWriter := tar.NewWriter(imageFile)
+	defer tarWriter.Close()
+
+	// 将config写入tar中
+	fileUrlMap := toolInput.FileUrlMap()
+	configFileUrl := fileUrlMap[manifest.Config.Sha256()]
+	configFilePath := manifest.Config.Sha256() + ".json"
+	if err := loadFromUrlToTar(configFilePath, &configFileUrl, tarWriter, false, ""); err != nil {
+		return nil, err
+	}
+
+	// 将layer写入tar中
+	layers, err := loadLayersToTar(manifest, fileUrlMap, tarWriter)
+	if err != nil {
+		return nil, err
+	}
+
+	// 写入manifest到tar
+	if err := writeManifestToTar(configFilePath, layers, tarWriter); err != nil {
+		return nil, err
+	}
+
+	return imageFile, nil
+}
+
+func loadManifest(manifestUrl *object.FileUrl) (*object.ManifestV2, error) {
 	manifestResponse, err := Download(manifestUrl.Url)
 	if err != nil {
 		return nil, err
@@ -159,41 +194,99 @@ func generateImageTar(toolInput *object.ToolInput) (*os.File, error) {
 		return nil, err
 	}
 	Info("get image manifest success")
+	return manifest, nil
+}
 
-	// 构建镜像tar包
-	fileUrlMap := make(map[string]object.FileUrl, len(toolInput.FileUrls))
-	for _, url := range toolInput.FileUrls {
-		fileUrlMap[url.Sha256] = url
-	}
-	imageFile, err := os.Create(filepath.Join(WorkDir, "image.tar"))
-	if err != nil {
+func loadLayersToTar(
+	manifest *object.ManifestV2,
+	fileUrlMap map[string]object.FileUrl,
+	tarWriter *tar.Writer,
+) ([]string, error) {
+	cacheDir := filepath.Join(WorkDir, "layer-cache")
+	if err := os.MkdirAll(cacheDir, 0766); err != nil {
 		return nil, err
 	}
-	tarWriter := tar.NewWriter(imageFile)
-	defer tarWriter.Close()
-
-	// load config layer
-	configFilePath := manifest.Config.Sha256() + ".json"
-	configFileUrl := fileUrlMap[manifest.Config.Sha256()]
-	if err := loadLayerToTar(configFilePath, &configFileUrl, tarWriter); err != nil {
-		return nil, err
-	}
+	layerCount := manifest.LayerCount()
 	layers := make([]string, 0, len(manifest.Layers))
-
-	// load layer
 	for _, layer := range manifest.Layers {
-		url := fileUrlMap[layer.Sha256()]
-		if err := putArchiveEntry(url.Sha256+"/", 0, nil, tarWriter); err != nil {
+		s := layer.Sha256()
+		url := fileUrlMap[s]
+		if err := writeTarHeader(url.Sha256+"/", 0, tarWriter); err != nil {
 			return nil, err
 		}
+
 		layerPath := url.Sha256 + "/layer.tar"
 		layers = append(layers, layerPath)
-		if err := loadLayerToTar(layerPath, &url, tarWriter); err != nil {
+		dup := layerCount[s] > 1
+		if err := loadFromUrlToTar(layerPath, &url, tarWriter, dup, cacheDir); err != nil {
 			return nil, err
 		}
 	}
+	if err := os.RemoveAll(cacheDir); err != nil {
+		return nil, err
+	}
+	return layers, nil
+}
 
-	// 打包manifest
+// loadFromUrlToTar 从url中加载数据并写入tar中
+// 如果dup为true表示为重复使用的url，会先尝试从本地缓存加载数据，加载不到会从url下载并写入缓存
+func loadFromUrlToTar(name string, fileUrl *object.FileUrl, tarWriter *tar.Writer, dup bool, cacheDir string) error {
+	cached := false
+	cacheFile := filepath.Join(cacheDir, fileUrl.Sha256)
+	if dup {
+		_, err := os.Stat(cacheFile)
+		cached = err == nil
+	}
+
+	// 获取数据来源
+	var src io.ReadCloser
+	if cached {
+		f, err := os.Open(cacheFile)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		src = f
+	} else {
+		layerRes, err := Download(fileUrl.Url)
+		if err != nil {
+			return err
+		}
+		defer layerRes.Close()
+		src = layerRes
+	}
+
+	// 判断是否需要同时写缓存
+	var dst io.Writer
+	if !dup || dup && cached {
+		dst = tarWriter
+	} else {
+		f, err := os.Create(cacheFile)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		dst = io.MultiWriter(tarWriter, f)
+	}
+
+	// 数据写入tar
+	header := &tar.Header{
+		Name: name,
+		Size: fileUrl.Size,
+	}
+	if err := tarWriter.WriteHeader(header); err != nil {
+		return err
+	}
+
+	_, err := writeAndCheckSha256(src, dst, fileUrl.Sha256)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeManifestToTar(configFilePath string, layers []string, tarWriter *tar.Writer) error {
 	manifestV1 := []object.ManifestV1{
 		{
 			Config:   configFilePath,
@@ -203,56 +296,25 @@ func generateImageTar(toolInput *object.ToolInput) (*os.File, error) {
 	}
 	manifestV1Json, err := json.Marshal(manifestV1)
 	if err != nil {
-		return nil, err
-	}
-	err = putArchiveEntry(manifestPath, int64(len(manifestV1Json)), bytes.NewReader(manifestV1Json), tarWriter)
-	if err != nil {
-		return nil, err
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	return imageFile, nil
-}
-
-func loadLayerToTar(name string, fileUrl *object.FileUrl, tarWriter *tar.Writer) error {
-	layerRes, err := Download(fileUrl.Url)
-	if err != nil {
-		return err
-	}
-	defer layerRes.Close()
-
-	header := &tar.Header{
-		Name: name,
-		Size: fileUrl.Size,
-	}
-	if err := tarWriter.WriteHeader(header); err != nil {
 		return err
 	}
 
-	_, err = writeAndCheckSha256(layerRes, tarWriter, fileUrl.Sha256)
-	if err != nil {
+	if err := writeTarHeader(manifestPath, int64(len(manifestV1Json)), tarWriter); err != nil {
+		return err
+	}
+	if _, err := io.Copy(tarWriter, bytes.NewReader(manifestV1Json)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func putArchiveEntry(name string, size int64, reader io.Reader, tarWriter *tar.Writer) error {
+func writeTarHeader(name string, size int64, tarWriter *tar.Writer) error {
 	header := &tar.Header{
 		Name: name,
 		Size: size,
 	}
-	if err := tarWriter.WriteHeader(header); err != nil {
-		return err
-	}
-	if reader != nil {
-		if _, err := io.Copy(tarWriter, reader); err != nil {
-			return err
-		}
-	}
-	return nil
+	return tarWriter.WriteHeader(header)
 }
 
 // Download 从指定url获取输入流

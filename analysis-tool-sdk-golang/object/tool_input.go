@@ -81,3 +81,12 @@ func (toolConfig *ToolConfig) GetStringArg(key string) string {
 	}
 	return argument.Value
 }
+
+// FileUrlMap 获取文件sh256到url的映射
+func (toolInput *ToolInput) FileUrlMap() map[string]FileUrl {
+	fileUrlMap := make(map[string]FileUrl, len(toolInput.FileUrls))
+	for _, url := range toolInput.FileUrls {
+		fileUrlMap[url.Sha256] = url
+	}
+	return fileUrlMap
+}
