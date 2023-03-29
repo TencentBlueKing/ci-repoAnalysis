@@ -117,7 +117,7 @@ func (c *BkRepoClient) Failed(err error) {
 
 // GenerateInputFile 生成待分析文件
 func (c *BkRepoClient) GenerateInputFile() (*os.File, error) {
-	return util.GenerateInputFile(c.ToolInput)
+	return util.GenerateInputFile(c.ToolInput, &util.DefaultDownloader{})
 }
 
 // updateSubtaskStatus 更新任务状态为执行中

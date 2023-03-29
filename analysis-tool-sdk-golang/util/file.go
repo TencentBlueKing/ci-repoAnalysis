@@ -12,7 +12,6 @@ import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"io"
 	"io/fs"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +39,7 @@ func WriteToFile(outputFilePath string, toolOutput *object.ToolOutput) error {
 }
 
 // GenerateInputFile 生成输入文件
-func GenerateInputFile(toolInput *object.ToolInput) (*os.File, error) {
+func GenerateInputFile(toolInput *object.ToolInput, downloader Downloader) (*os.File, error) {
 	if toolInput.FilePath != "" {
 		return os.Open(toolInput.FilePath)
 	}
@@ -49,14 +48,14 @@ func GenerateInputFile(toolInput *object.ToolInput) (*os.File, error) {
 	}
 
 	if toolInput.ToolConfig.GetStringArg(ArgKeyPkgType) == PackageTypeDocker {
-		return generateImageTar(toolInput)
+		return generateImageTar(toolInput, downloader)
 	} else {
 		fileUrl := toolInput.FileUrls[0]
 		file, err := os.Create(filepath.Join(WorkDir, fileUrl.Name))
 		if err != nil {
 			return nil, err
 		}
-		reader, err := Download(fileUrl.Url)
+		reader, err := downloader.Download(fileUrl.Url)
 		if err != nil {
 			return nil, err
 		}
@@ -70,9 +69,9 @@ func GenerateInputFile(toolInput *object.ToolInput) (*os.File, error) {
 }
 
 // ExtractTarUrl 从指定url解压到指定路径
-func ExtractTarUrl(url string, dstDir string, perm fs.FileMode) error {
+func ExtractTarUrl(url string, dstDir string, perm fs.FileMode, downloader Downloader) error {
 	Info("extracting url %s to %s", url, dstDir)
-	reader, err := Download(url)
+	reader, err := downloader.Download(url)
 	if err != nil {
 		return err
 	}
@@ -143,9 +142,9 @@ func Extract(reader io.Reader, dstDir string, perm fs.FileMode) error {
 	return nil
 }
 
-func generateImageTar(toolInput *object.ToolInput) (*os.File, error) {
+func generateImageTar(toolInput *object.ToolInput, downloader Downloader) (*os.File, error) {
 	// 获取manifest
-	manifest, err := loadManifest(&toolInput.FileUrls[0])
+	manifest, err := loadManifest(&toolInput.FileUrls[0], downloader)
 	if err != nil {
 		return nil, err
 	}
@@ -162,12 +161,14 @@ func generateImageTar(toolInput *object.ToolInput) (*os.File, error) {
 	fileUrlMap := toolInput.FileUrlMap()
 	configFileUrl := fileUrlMap[manifest.Config.Sha256()]
 	configFilePath := manifest.Config.Sha256() + ".json"
-	if err := loadFromUrlToTar(configFilePath, &configFileUrl, tarWriter, false, ""); err != nil {
+
+	err = loadFromUrlToTar(configFilePath, &configFileUrl, tarWriter, false, "", downloader)
+	if err != nil {
 		return nil, err
 	}
 
 	// 将layer写入tar中
-	layers, err := loadLayersToTar(manifest, fileUrlMap, tarWriter)
+	layers, err := loadLayersToTar(manifest, fileUrlMap, tarWriter, downloader)
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +181,8 @@ func generateImageTar(toolInput *object.ToolInput) (*os.File, error) {
 	return imageFile, nil
 }
 
-func loadManifest(manifestUrl *object.FileUrl) (*object.ManifestV2, error) {
-	manifestResponse, err := Download(manifestUrl.Url)
+func loadManifest(manifestUrl *object.FileUrl, downloader Downloader) (*object.ManifestV2, error) {
+	manifestResponse, err := downloader.Download(manifestUrl.Url)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +202,7 @@ func loadLayersToTar(
 	manifest *object.ManifestV2,
 	fileUrlMap map[string]object.FileUrl,
 	tarWriter *tar.Writer,
+	downloader Downloader,
 ) ([]string, error) {
 	cacheDir := filepath.Join(WorkDir, "layer-cache")
 	if err := os.MkdirAll(cacheDir, 0766); err != nil {
@@ -218,7 +220,7 @@ func loadLayersToTar(
 		layerPath := url.Sha256 + "/layer.tar"
 		layers = append(layers, layerPath)
 		dup := layerCount[s] > 1
-		if err := loadFromUrlToTar(layerPath, &url, tarWriter, dup, cacheDir); err != nil {
+		if err := loadFromUrlToTar(layerPath, &url, tarWriter, dup, cacheDir, downloader); err != nil {
 			return nil, err
 		}
 	}
@@ -230,7 +232,14 @@ func loadLayersToTar(
 
 // loadFromUrlToTar 从url中加载数据并写入tar中
 // 如果dup为true表示为重复使用的url，会先尝试从本地缓存加载数据，加载不到会从url下载并写入缓存
-func loadFromUrlToTar(name string, fileUrl *object.FileUrl, tarWriter *tar.Writer, dup bool, cacheDir string) error {
+func loadFromUrlToTar(
+	name string,
+	fileUrl *object.FileUrl,
+	tarWriter *tar.Writer,
+	dup bool,
+	cacheDir string,
+	downloader Downloader,
+) error {
 	cached := false
 	cacheFile := filepath.Join(cacheDir, fileUrl.Sha256)
 	if dup {
@@ -248,7 +257,7 @@ func loadFromUrlToTar(name string, fileUrl *object.FileUrl, tarWriter *tar.Write
 		defer f.Close()
 		src = f
 	} else {
-		layerRes, err := Download(fileUrl.Url)
+		layerRes, err := downloader.Download(fileUrl.Url)
 		if err != nil {
 			return err
 		}
@@ -315,20 +324,6 @@ func writeTarHeader(name string, size int64, tarWriter *tar.Writer) error {
 		Size: size,
 	}
 	return tarWriter.WriteHeader(header)
-}
-
-// Download 从指定url获取输入流
-func Download(url string) (io.ReadCloser, error) {
-	Info("downloading %s", url)
-	response, err := http.DefaultClient.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	if response.StatusCode != http.StatusOK {
-		return nil, errors.New("download failed, status: " + response.Status)
-	}
-
-	return response.Body, nil
 }
 
 func writeAndCheckSha256(reader io.Reader, writer io.Writer, realSha256 string) (string, error) {
