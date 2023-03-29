@@ -17,6 +17,21 @@ type Layer struct {
 	Digest    string
 }
 
+// LayerCount 统计Layer数量，可能存在重复layer
+func (m *ManifestV2) LayerCount() map[string]int {
+	countMap := make(map[string]int, len(m.Layers))
+	for i := range m.Layers {
+		l := m.Layers[i]
+		s := l.Sha256()
+		c := 0
+		if _, ok := countMap[s]; ok {
+			c = countMap[s]
+		}
+		countMap[s] = c + 1
+	}
+	return countMap
+}
+
 // Sha256 镜像层sha256
 func (l *Layer) Sha256() string {
 	digestSplits := strings.Split(l.Digest, ":")
