@@ -3,7 +3,7 @@ module github.com/TencentBlueKing/ci-repoAnalysis/filepath-search
 go 1.18
 
 require (
-	github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang v0.0.14
+	github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang v0.0.15
 	github.com/google/go-containerregistry v0.14.0
 )
 
