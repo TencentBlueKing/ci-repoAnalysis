@@ -6,8 +6,14 @@ import (
 )
 
 // ExecAndLog 执行命令并实时输出日志
-func ExecAndLog(name string, args []string) error {
+func ExecAndLog(name string, args []string, workDir string) error {
 	cmd := exec.Command(name, args...)
+
+	if len(workDir) > 0 {
+		cmd.Dir = workDir
+		Info("work directory: %s", workDir)
+	}
+
 	Info("will execute: %s", cmd.String())
 
 	outScanner, errScanner, err := createScanner(cmd)
