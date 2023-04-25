@@ -73,7 +73,7 @@ func npmPrepare(file *os.File) error {
 
 	// 替换 package-lock.json中的file:xxx 为实际版本号
 	sedExp := fmt.Sprintf(
-		"'s/\\\"%s\\\": \\\"file:%s\\\"/\\\"%s\\\": \\\"%s\\\"/'",
+		"s/\\\"%s\\\": \\\"file:%s\\\"/\\\"%s\\\": \\\"%s\\\"/",
 		pkgName, fileBaseName, pkgName, pkgVersion,
 	)
 	args := []string{"-i", sedExp, "package-lock.json"}
@@ -82,7 +82,7 @@ func npmPrepare(file *os.File) error {
 	}
 
 	sedExp = fmt.Sprintf(
-		"'s/\\\"version\\\": \\\"file:%s\\\"/\\\"version\\\": \\\"%s\\\"/'",
+		"s/\\\"version\\\": \\\"file:%s\\\"/\\\"version\\\": \\\"%s\\\"/",
 		fileBaseName, pkgVersion,
 	)
 	args = []string{"-i", sedExp, "package-lock.json"}
