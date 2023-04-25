@@ -28,7 +28,7 @@ func (e DependencyCheckExecutor) Execute(config *object.ToolConfig, file *os.Fil
 		if err := npmPrepare(file); err != nil {
 			return nil, err
 		}
-		inputFile = filepath.Join(filepath.Dir(filepath.Dir(inputFile)), "package-lock.json")
+		inputFile = filepath.Join(filepath.Dir(inputFile), "package-lock.json")
 	}
 
 	// 下载漏洞库
