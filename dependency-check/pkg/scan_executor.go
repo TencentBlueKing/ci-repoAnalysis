@@ -76,8 +76,10 @@ func npmPrepare(file *os.File) error {
 		"s/\\\"%s\\\": \\\"file:%s\\\"/\\\"%s\\\": \\\"%s\\\"/",
 		pkgName, fileBaseName, pkgName, pkgVersion,
 	)
-	args := []string{"-i", sedExp, "package-lock.json"}
-	if err := util.ExecAndLog("sed", args, workDir); err != nil {
+	if err := sed(sedExp, filepath.Join(workDir, "package-lock.json")); err != nil {
+		return err
+	}
+	if err := sed(sedExp, filepath.Join(workDir, "package.json")); err != nil {
 		return err
 	}
 
@@ -85,8 +87,15 @@ func npmPrepare(file *os.File) error {
 		"s/\\\"version\\\": \\\"file:%s\\\"/\\\"version\\\": \\\"%s\\\"/",
 		fileBaseName, pkgVersion,
 	)
-	args = []string{"-i", sedExp, "package-lock.json"}
-	if err := util.ExecAndLog("sed", args, workDir); err != nil {
+	if err := sed(sedExp, filepath.Join(workDir, "package-lock.json")); err != nil {
+		return err
+	}
+	return nil
+}
+
+func sed(exp string, fileAbsPath string) error {
+	args := []string{"-i", exp, fileAbsPath}
+	if err := util.ExecAndLog("sed", args, ""); err != nil {
 		return err
 	}
 	return nil
