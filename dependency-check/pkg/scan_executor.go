@@ -8,7 +8,6 @@ import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 const PackageTypeNpm = "NPM"
@@ -59,16 +58,16 @@ func npmPrepare(file *os.File) error {
 	}
 
 	// 获取 pkgName 和 pkgVersion
-	indexOfHyphens := strings.Index(fileBaseName, "-")
-	if indexOfHyphens == -1 {
-		return errors.New("'-' not found in file name " + fileBaseName)
+	pkgName, pkgVersion, err := ExtractPackageNameAndVersion(fileAbsPath)
+	if err != nil {
+		return err
 	}
-	indexOfLastDot := strings.LastIndex(fileBaseName, ".")
-	if indexOfLastDot == -1 {
-		return errors.New("'.' not found in file name " + fileBaseName)
+	if len(pkgName) == 0 || len(pkgVersion) == 0 {
+		pkgName, pkgVersion = ParsePackageNameAndVersion(fileBaseName)
 	}
-	pkgName := fileBaseName[:indexOfHyphens]
-	pkgVersion := fileBaseName[indexOfHyphens+1 : indexOfLastDot]
+	if len(pkgName) == 0 || len(pkgVersion) == 0 {
+		return errors.New("failed to parse npm pkgName and pkgVersion")
+	}
 	util.Info("npm package %s, version %s", pkgName, pkgVersion)
 
 	// 替换 package-lock.json中的file:xxx 为实际版本号
