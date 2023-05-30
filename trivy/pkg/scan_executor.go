@@ -17,7 +17,10 @@ type TrivyExecutor struct{}
 
 // Execute 执行分析
 func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
-	offline := len(config.GetStringArg(constant.ArgDbDownloadUrl)) > 0
+	offline, err := config.GetBoolArg(constant.ConfigOffline)
+	if err != nil {
+		return nil, err
+	}
 	if offline {
 		if err := downloadAllDB(config); err != nil {
 			return nil, err
@@ -34,16 +37,20 @@ func downloadAllDB(config *object.ToolConfig) error {
 	downloader := &util.DefaultDownloader{}
 	// download db
 	url := config.GetStringArg(constant.ArgDbDownloadUrl)
-	dbDir := filepath.Join(constant.DbCacheDir, constant.DbDir)
-	if err := util.ExtractTarUrl(url, dbDir, 0770, downloader); err != nil {
-		return err
+	if len(url) > 0 {
+		dbDir := filepath.Join(constant.DbCacheDir, constant.DbDir)
+		if err := util.ExtractTarUrl(url, dbDir, 0770, downloader); err != nil {
+			return err
+		}
 	}
 
 	// download java db
 	javaDbUrl := config.GetStringArg(constant.ArgJavaDbDownloadUrl)
-	javaDbDir := filepath.Join(constant.DbCacheDir, constant.JavaDbDir)
-	if err := util.ExtractTarUrl(javaDbUrl, javaDbDir, 0770, downloader); err != nil {
-		return err
+	if len(javaDbUrl) == 0 {
+		javaDbDir := filepath.Join(constant.DbCacheDir, constant.JavaDbDir)
+		if err := util.ExtractTarUrl(javaDbUrl, javaDbDir, 0770, downloader); err != nil {
+			return err
+		}
 	}
 	return nil
 }
