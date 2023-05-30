@@ -19,7 +19,7 @@ type TrivyExecutor struct{}
 func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
 	offline, err := config.GetBoolArg(constant.ConfigOffline)
 	if err != nil {
-		return nil, err
+		offline = len(config.GetStringArg(constant.ArgDbDownloadUrl)) > 0
 	}
 	if offline {
 		if err := downloadAllDB(config); err != nil {
@@ -46,7 +46,7 @@ func downloadAllDB(config *object.ToolConfig) error {
 
 	// download java db
 	javaDbUrl := config.GetStringArg(constant.ArgJavaDbDownloadUrl)
-	if len(javaDbUrl) == 0 {
+	if len(javaDbUrl) > 0 {
 		javaDbDir := filepath.Join(constant.DbCacheDir, constant.JavaDbDir)
 		if err := util.ExtractTarUrl(javaDbUrl, javaDbDir, 0770, downloader); err != nil {
 			return err
