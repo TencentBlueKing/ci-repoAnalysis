@@ -82,3 +82,6 @@ const ArgDbDownloadUrl = "dbDownloadUrl"
 
 // ArgJavaDbDownloadUrl java漏洞库下载地址
 const ArgJavaDbDownloadUrl = "javaDbDownloadUrl"
+
+// ConfigOffline 是否使用离线模式
+const ConfigOffline = "offline"
