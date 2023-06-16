@@ -5,7 +5,6 @@ import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
 	"os"
-	"path/filepath"
 )
 
 // Scancode 扫描器
@@ -28,7 +27,7 @@ func (e Scancode) Execute(config *object.ToolConfig, file *os.File) (*object.Too
 		"-n", "4",
 		"--only-findings",
 		"--json", resultFile,
-		filepath.Base(file.Name()) + "-extract",
+		file.Name() + "-extract",
 	}
 
 	if err := util.ExecAndLog("scancode", args, ""); err != nil {
