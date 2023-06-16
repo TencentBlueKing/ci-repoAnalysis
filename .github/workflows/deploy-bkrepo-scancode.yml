@@ -1,0 +1,12 @@
+name: Create and publish bkrepo-scancode image
+
+on:
+  push:
+    tags:
+      - "scancode/v*"
+
+jobs:
+  build-and-push-image:
+    uses: ./.github/workflows/deploy-golang-analysis-tool.yml
+    with:
+      tool_name: scancode
