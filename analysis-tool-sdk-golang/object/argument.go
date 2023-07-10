@@ -7,11 +7,12 @@ import (
 
 // Arguments 输入参数
 type Arguments struct {
-	Url            string
-	Token          string
-	TaskId         string
-	InputFilePath  string
-	OutputFilePath string
+	Url              string
+	Token            string
+	TaskId           string
+	ExecutionCluster string
+	InputFilePath    string
+	OutputFilePath   string
 }
 
 var args *Arguments
@@ -21,6 +22,7 @@ func newArguments() *Arguments {
 	flag.StringVar(&args.Url, "url", "", "制品库地址")
 	flag.StringVar(&args.Token, "token", "", "制品库临时令牌")
 	flag.StringVar(&args.TaskId, "task-id", "", "扫描任务Id")
+	flag.StringVar(&args.ExecutionCluster, "execution-cluster", "", "所在扫描执行集群名")
 	flag.StringVar(&args.InputFilePath, "input", "", "输入文件路径")
 	flag.StringVar(&args.OutputFilePath, "output", "", "输出文件路径")
 
@@ -51,5 +53,5 @@ func (arg *Arguments) Offline() bool {
 
 // Online 在线扫描
 func (arg *Arguments) Online() bool {
-	return arg.Url != "" && arg.Token != "" && arg.TaskId != ""
+	return arg.Url != "" && arg.Token != "" && (arg.TaskId != "" || arg.ExecutionCluster != "")
 }

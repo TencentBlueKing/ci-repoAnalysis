@@ -56,18 +56,20 @@ func GetClient(args *object.Arguments) *BkRepoClient {
 
 // Start 开始分析
 func (c *BkRepoClient) Start() (*object.ToolInput, error) {
-	if c.ToolInput == nil && c.Args.Online() {
-		if err := c.updateSubtaskStatus(); err != nil {
-			return nil, err
-		}
-		util.Info("update subtask status success")
-	}
 	if c.ToolInput == nil {
 		if err := c.initToolInput(); err != nil {
 			return nil, err
 		}
 		toolInputJson, _ := json.Marshal(c.ToolInput)
 		util.Info("init tool input success:\n %s", toolInputJson)
+
+		// 是在线任务时，更新任务状态为执行中
+		if c.Args.Online() {
+			if err := c.updateSubtaskStatus(); err != nil {
+				return nil, err
+			}
+			util.Info("update subtask status success")
+		}
 	}
 	return c.ToolInput, nil
 }
@@ -160,11 +162,17 @@ func (c *BkRepoClient) initToolInput() error {
 			return err
 		}
 		c.ToolInput = toolInput
-	} else {
+	} else if c.Args.TaskId != "" {
 		var err error
 		if c.ToolInput, err = c.fetchToolInput(); err != nil {
 			return err
 		}
+	} else {
+		var err error
+		if c.ToolInput, err = c.pullToolInput(); err != nil {
+			return err
+		}
+		c.Args.TaskId = c.ToolInput.TaskId
 	}
 	return nil
 }
@@ -172,6 +180,17 @@ func (c *BkRepoClient) initToolInput() error {
 // fetchToolInput 从制品分析服务拉取工具输入
 func (c *BkRepoClient) fetchToolInput() (*object.ToolInput, error) {
 	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + c.Args.TaskId + "/input?token=" + c.Args.Token
+	return c.doFetchToolInput(url)
+}
+
+// pullTooInput 从制品分析服务拉取工具输入
+func (c *BkRepoClient) pullToolInput() (*object.ToolInput, error) {
+	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/input?executionCluster=" + c.Args.ExecutionCluster +
+		"&token=" + c.Args.Token
+	return c.doFetchToolInput(url)
+}
+
+func (c *BkRepoClient) doFetchToolInput(url string) (*object.ToolInput, error) {
 	response, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return nil, err
