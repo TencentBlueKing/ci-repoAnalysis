@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 // analystTemporaryPrefix 制品分析服务接口前缀
@@ -187,7 +188,23 @@ func (c *BkRepoClient) fetchToolInput() (*object.ToolInput, error) {
 func (c *BkRepoClient) pullToolInput() (*object.ToolInput, error) {
 	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/input?executionCluster=" + c.Args.ExecutionCluster +
 		"&token=" + c.Args.Token
-	return c.doFetchToolInput(url)
+
+	var toolInput *object.ToolInput = nil
+	var err error = nil
+	var pullRetry = c.Args.PullRetry
+	for (toolInput == nil || toolInput.TaskId == "") && pullRetry != 0 {
+		if err != nil {
+			return nil, err
+		}
+		util.Info("try to pull subtask...")
+		toolInput, err = c.doFetchToolInput(url)
+		pullRetry--
+		if toolInput == nil || toolInput.TaskId == "" {
+			time.Sleep(5 * time.Second)
+		}
+	}
+
+	return toolInput, err
 }
 
 func (c *BkRepoClient) doFetchToolInput(url string) (*object.ToolInput, error) {
