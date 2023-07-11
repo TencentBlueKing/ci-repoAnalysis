@@ -99,7 +99,7 @@ func execTrivy(fileName string, offline bool, config *object.ToolConfig) error {
 		args = append(args, constant.FlagSecretConfig, constant.SecretRuleFilePath)
 	}
 
-	if err := util.ExecAndLog(constant.CmdTrivy, args); err != nil {
+	if err := util.ExecAndLog(constant.CmdTrivy, args, ""); err != nil {
 		return err
 	}
 	return nil
