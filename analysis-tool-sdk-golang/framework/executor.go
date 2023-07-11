@@ -26,6 +26,10 @@ func doAnalyze(executor Executor, arguments *object.Arguments) {
 	if err != nil {
 		panic("Start analyze failed: " + err.Error())
 	}
+	if input == nil || input.TaskId == "" {
+		util.Info("no subtask found, exit")
+		os.Exit(0)
+	}
 	file, err := client.GenerateInputFile()
 	defer file.Close()
 	if err != nil {
