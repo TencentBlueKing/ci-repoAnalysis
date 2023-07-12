@@ -10,8 +10,8 @@ import (
 
 // StandardAdapterExecutor 标准扫描器适配器
 type StandardAdapterExecutor struct {
-	cmd     string
-	workDir string
+	Cmd     string
+	WorkDir string
 }
 
 // Execute 执行扫描
@@ -39,7 +39,7 @@ func (e StandardAdapterExecutor) Execute(_ *object.ToolConfig, file *os.File) (*
 		"--input", toolInputFile,
 		"--output", toolOutputFile,
 	}
-	err = util.ExecAndLog(e.cmd, args, e.workDir)
+	err = util.ExecAndLog(e.Cmd, args, e.WorkDir)
 	if err != nil {
 		return nil, err
 	}
