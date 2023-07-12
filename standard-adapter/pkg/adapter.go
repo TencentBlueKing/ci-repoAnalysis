@@ -8,11 +8,13 @@ import (
 	"os"
 )
 
+// StandardAdapterExecutor 标准扫描器适配器
 type StandardAdapterExecutor struct {
 	cmd     string
 	workDir string
 }
 
+// Execute 执行扫描
 func (e StandardAdapterExecutor) Execute(_ *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
 	// 将toolInput写入/bkrepo/workspace/input.json
 	toolInput, err := api.GetClient(object.GetArgs()).Start()
