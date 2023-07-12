@@ -6,6 +6,7 @@ import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
 	"os"
+	"strings"
 )
 
 // StandardAdapterExecutor 标准扫描器适配器
@@ -35,11 +36,15 @@ func (e StandardAdapterExecutor) Execute(_ *object.ToolConfig, file *os.File) (*
 
 	// 执行扫描
 	toolOutputFile := util.WorkDir + "/output.json"
-	args := []string{
-		"--input", toolInputFile,
-		"--output", toolOutputFile,
+	var args []string
+	cmd := e.Cmd
+	splitCmd := strings.Split(e.Cmd, " ")
+	if len(splitCmd) > 1 {
+		cmd = splitCmd[0]
+		args = append(args, splitCmd[1:]...)
 	}
-	err = util.ExecAndLog(e.Cmd, args, e.WorkDir)
+	args = append(args, "--input", toolInputFile, "--output", toolOutputFile)
+	err = util.ExecAndLog(cmd, args, e.WorkDir)
 	if err != nil {
 		return nil, err
 	}
