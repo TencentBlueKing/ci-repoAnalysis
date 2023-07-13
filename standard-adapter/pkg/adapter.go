@@ -81,5 +81,15 @@ func (e StandardAdapterExecutor) readToolOutput(f string) (*object.ToolOutput, e
 	if err != nil {
 		return nil, err
 	}
+
+	for i := range output.Result.SecurityResults {
+		r := output.Result.SecurityResults[i]
+		if r.PkgVersions == nil {
+			r.PkgVersions = []string{}
+		}
+		if r.References == nil {
+			r.References = []string{}
+		}
+	}
 	return output, nil
 }
