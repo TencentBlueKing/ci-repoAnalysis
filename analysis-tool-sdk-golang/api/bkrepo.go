@@ -125,7 +125,7 @@ func (c *BkRepoClient) GenerateInputFile() (*os.File, error) {
 
 // updateSubtaskStatus 更新任务状态为执行中
 func (c *BkRepoClient) updateSubtaskStatus() error {
-	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + c.Args.TaskId + "/status?token=" + c.Args.Token + "&status=EXECUTING"
+	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + c.ToolInput.TaskId + "/status?token=" + c.Args.Token + "&status=EXECUTING"
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func (c *BkRepoClient) updateSubtaskStatus() error {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return errors.New("更新扫描任务[" + c.Args.TaskId + "]状态失败, status: " + response.Status)
+		return errors.New("更新扫描任务[" + c.ToolInput.TaskId + "]状态失败, status: " + response.Status)
 	}
 
 	res := new(Response[bool])
@@ -145,7 +145,7 @@ func (c *BkRepoClient) updateSubtaskStatus() error {
 	}
 
 	if !res.Data {
-		return errors.New("更新扫描任务[" + c.Args.TaskId + "]状态失败, msg: " +
+		return errors.New("更新扫描任务[" + c.ToolInput.TaskId + "]状态失败, msg: " +
 			res.Message + "code: " + strconv.Itoa(res.Code))
 	}
 	return nil
@@ -165,7 +165,7 @@ func (c *BkRepoClient) initToolInput() error {
 		c.ToolInput = toolInput
 	} else if c.Args.TaskId != "" {
 		var err error
-		if c.ToolInput, err = c.fetchToolInput(); err != nil {
+		if c.ToolInput, err = c.fetchToolInput(c.Args.TaskId); err != nil {
 			return err
 		}
 	} else {
@@ -173,14 +173,13 @@ func (c *BkRepoClient) initToolInput() error {
 		if c.ToolInput, err = c.pullToolInput(); err != nil {
 			return err
 		}
-		c.Args.TaskId = c.ToolInput.TaskId
 	}
 	return nil
 }
 
 // fetchToolInput 从制品分析服务拉取工具输入
-func (c *BkRepoClient) fetchToolInput() (*object.ToolInput, error) {
-	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + c.Args.TaskId + "/input?token=" + c.Args.Token
+func (c *BkRepoClient) fetchToolInput(taskId string) (*object.ToolInput, error) {
+	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + taskId + "/input?token=" + c.Args.Token
 	return c.doFetchToolInput(url)
 }
 
