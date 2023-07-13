@@ -110,6 +110,7 @@ func (c *BkRepoClient) Finish(toolOutput *object.ToolOutput) {
 			panic("Report analysis result failed, taskId: " + toolOutput.TaskId)
 		}
 	}
+	c.ToolInput = nil
 }
 
 func (c *BkRepoClient) Failed(err error) {
