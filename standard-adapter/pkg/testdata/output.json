@@ -1,0 +1,35 @@
+{
+  "status": "SUCCESS",
+  "err": null,
+  "taskId": "test",
+  "result": {
+    "securityResults": [
+      {
+        "vulId": "CVE-2020-1971 ",
+        "cveId": "CVE-2020-1971 ",
+        "path": "/path/to",
+        "pkgName": "openssl/openssl",
+        "effectedVersion": " <1.1.1i ",
+        "des": "test",
+        "references": [
+          " https://github.com/openssl/openssl/commit/b33c48b75aaf33c93aeda42d7138616b9e6a64cb "
+        ],
+        "cvss": 5.9,
+        "severity": "medium"
+      },
+      {
+        "vulId": "CVE-2014-0076 ",
+        "cveId": "CVE-2014-0076 ",
+        "path": "/path/to",
+        "pkgName": "openssl/openssl",
+        "effectedVersion": " 1.0.0l ",
+        "des": "test",
+        "references": [
+          " https://github.com/openssl/openssl/commit/f9b6c0ba4c02497782f801e3c45688f3efaac55c "
+        ],
+        "cvss": 1.9,
+        "severity": "low"
+      }
+    ]
+  }
+}

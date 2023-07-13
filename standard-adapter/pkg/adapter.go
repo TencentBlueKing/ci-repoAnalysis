@@ -83,7 +83,7 @@ func (e StandardAdapterExecutor) readToolOutput(f string) (*object.ToolOutput, e
 	}
 
 	for i := range output.Result.SecurityResults {
-		r := output.Result.SecurityResults[i]
+		r := &output.Result.SecurityResults[i]
 		if r.PkgVersions == nil {
 			r.PkgVersions = []string{}
 		}
