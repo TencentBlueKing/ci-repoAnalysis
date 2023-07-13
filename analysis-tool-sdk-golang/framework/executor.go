@@ -19,12 +19,16 @@ type Executor interface {
 func Analyze(executor Executor) {
 	args := object.GetArgs()
 	for {
+		util.Info("start analyze")
 		doAnalyze(executor, args)
+		util.Info("keep running %t", args.ShouldKeepRunning())
 		if args.ShouldKeepRunning() {
 			if err := util.CleanWorkDir(); err != nil {
 				panic("clean work dir failed: " + err.Error())
 			}
+			util.Info("clean workdir success")
 		} else {
+			util.Info("analyze finished")
 			break
 		}
 	}
@@ -53,5 +57,4 @@ func doAnalyze(executor Executor, arguments *object.Arguments) {
 	} else {
 		client.Finish(output)
 	}
-	util.Info("analyze finished")
 }
