@@ -71,5 +71,5 @@ func (arg *Arguments) Online() bool {
 
 // ShouldKeepRunning 是否无限循环拉取任务执行
 func (arg *Arguments) ShouldKeepRunning() bool {
-	return arg.Online() && arg.KeepRunning && arg.TaskId == ""
+	return arg.Online() && arg.KeepRunning && arg.ExecutionCluster != ""
 }
