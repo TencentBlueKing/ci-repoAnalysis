@@ -22,6 +22,11 @@ const PackageTypeDocker = "DOCKER"
 const WorkDir = "/bkrepo/workspace"
 const manifestPath = "manifest.json"
 
+// CleanWorkDir 清理工作空间
+func CleanWorkDir() error {
+	return os.RemoveAll(WorkDir)
+}
+
 // WriteToFile 工具输出写入文件
 func WriteToFile(outputFilePath string, toolOutput *object.ToolOutput) error {
 	toolOutputContent, err := json.Marshal(toolOutput)

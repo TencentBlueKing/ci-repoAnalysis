@@ -17,7 +17,17 @@ type Executor interface {
 
 // Analyze 执行分析
 func Analyze(executor Executor) {
-	doAnalyze(executor, object.GetArgs())
+	args := object.GetArgs()
+	for {
+		doAnalyze(executor, args)
+		if args.ShouldKeepRunning() {
+			if err := util.CleanWorkDir(); err != nil {
+				panic("clean work dir failed: " + err.Error())
+			}
+		} else {
+			break
+		}
+	}
 }
 
 func doAnalyze(executor Executor, arguments *object.Arguments) {
