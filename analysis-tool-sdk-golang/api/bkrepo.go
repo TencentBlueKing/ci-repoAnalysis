@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -121,7 +122,33 @@ func (c *BkRepoClient) Failed(err error) {
 
 // GenerateInputFile 生成待分析文件
 func (c *BkRepoClient) GenerateInputFile() (*os.File, error) {
-	return util.GenerateInputFile(c.ToolInput, &util.DefaultDownloader{})
+	var downloader util.Downloader
+	workerCount, _ := c.ToolInput.ToolConfig.GetIntArg(util.ArgKeyDownloaderWorkerCount)
+	if workerCount > 0 {
+		// 解析header
+		downloaderHeadersStr := c.ToolInput.ToolConfig.GetStringArg(util.ArgKeyDownloaderWorkerHeaders)
+		var headers map[string]string
+		if len(downloaderHeadersStr) > 0 {
+			downloaderHeaders := strings.Split(downloaderHeadersStr, ",")
+			for i := range downloaderHeaders {
+				h := strings.Split(downloaderHeaders[i], ":")
+				if len(h) != 2 {
+					return nil, errors.New("headers error: " + downloaderHeaders[i])
+				}
+				headers[strings.TrimSpace(h[0])] = strings.TrimSpace(h[1])
+			}
+		}
+		// 创建下载器并生成待分析文件
+		downloader = util.NewChunkDownloader(
+			int(workerCount),
+			util.WorkDir,
+			headers,
+			c.Args.DownloaderClient,
+		)
+	} else {
+		downloader = util.NewDownloader(c.Args.DownloaderClient)
+	}
+	return util.GenerateInputFile(c.ToolInput, downloader)
 }
 
 // updateSubtaskStatus 更新任务状态为执行中

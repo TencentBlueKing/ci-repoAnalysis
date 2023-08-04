@@ -17,6 +17,8 @@ import (
 	"strings"
 )
 
+const ArgKeyDownloaderWorkerCount = "downloaderWorker"
+const ArgKeyDownloaderWorkerHeaders = "downloaderHeaders"
 const ArgKeyPkgType = "packageType"
 const PackageTypeDocker = "DOCKER"
 const WorkDir = "/bkrepo/workspace"

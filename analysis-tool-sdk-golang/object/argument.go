@@ -3,6 +3,9 @@ package object
 import (
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
+	"time"
 )
 
 // Arguments 输入参数
@@ -15,6 +18,7 @@ type Arguments struct {
 	InputFilePath    string
 	OutputFilePath   string
 	KeepRunning      bool
+	DownloaderClient *http.Client
 }
 
 var args *Arguments
@@ -72,4 +76,30 @@ func (arg *Arguments) Online() bool {
 // ShouldKeepRunning 是否无限循环拉取任务执行
 func (arg *Arguments) ShouldKeepRunning() bool {
 	return arg.Online() && arg.KeepRunning && arg.TaskId == ""
+}
+
+// CustomDownloaderHttpClientResolver 自定义下载器使用的http客户端DNS解析
+func (arg *Arguments) CustomDownloaderHttpClientResolver(resolver *net.Resolver) *http.Client {
+	if resolver == nil {
+		arg.DownloaderClient = http.DefaultClient
+	} else {
+		transport := &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				Resolver:  resolver,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		arg.DownloaderClient = &http.Client{
+			Transport: transport,
+		}
+	}
+	return arg.DownloaderClient
 }

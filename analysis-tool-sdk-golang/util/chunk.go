@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"golang.org/x/sync/errgroup"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -27,37 +26,18 @@ func NewChunkDownloader(
 	WorkerCount int,
 	TmpDir string,
 	Headers map[string]string,
-	Resolver *net.Resolver,
+	client *http.Client,
 ) *ChunkDownloader {
-	var client *http.Client
-
-	if Resolver == nil {
-		client = http.DefaultClient
-	} else {
-		transport := &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-				Resolver:  Resolver,
-			}).DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		}
-
-		client = &http.Client{
-			Transport: transport,
-		}
+	var c *http.Client
+	if client == nil {
+		c = http.DefaultClient
 	}
 
 	return &ChunkDownloader{
 		WorkerCount: WorkerCount,
 		TmpDir:      TmpDir,
 		Headers:     Headers,
-		client:      client,
+		client:      c,
 	}
 }
 
