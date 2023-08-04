@@ -28,7 +28,7 @@ func NewChunkDownloader(
 	Headers map[string]string,
 	client *http.Client,
 ) *ChunkDownloader {
-	var c *http.Client
+	var c = client
 	if client == nil {
 		c = http.DefaultClient
 	}

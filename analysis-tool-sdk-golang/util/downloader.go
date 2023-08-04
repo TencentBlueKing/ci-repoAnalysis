@@ -19,7 +19,7 @@ type DefaultDownloader struct {
 
 // NewDownloader 创建默认下载器
 func NewDownloader(client *http.Client) Downloader {
-	var c *http.Client
+	var c = client
 	if client == nil {
 		c = http.DefaultClient
 	}
