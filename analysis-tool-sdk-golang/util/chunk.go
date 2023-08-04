@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/sync/errgroup"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -18,6 +19,46 @@ type ChunkDownloader struct {
 	WorkerCount int
 	TmpDir      string
 	Headers     map[string]string
+	client      *http.Client
+}
+
+// NewChunkDownloader 创建分片下载器
+func NewChunkDownloader(
+	WorkerCount int,
+	TmpDir string,
+	Headers map[string]string,
+	Resolver *net.Resolver,
+) *ChunkDownloader {
+	var client *http.Client
+
+	if Resolver == nil {
+		client = http.DefaultClient
+	} else {
+		transport := &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				Resolver:  Resolver,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		client = &http.Client{
+			Transport: transport,
+		}
+	}
+
+	return &ChunkDownloader{
+		WorkerCount: WorkerCount,
+		TmpDir:      TmpDir,
+		Headers:     Headers,
+		client:      client,
+	}
 }
 
 // Download 分片下载
@@ -79,7 +120,7 @@ func (d *ChunkDownloader) doDownload(ctx context.Context, url string, file *os.F
 	rangeHeader := "bytes=" + strconv.Itoa(start) + "-" + strconv.Itoa(end)
 	req.Header.Set("Range", rangeHeader)
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := d.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -117,7 +158,7 @@ func (d *ChunkDownloader) doDownload(ctx context.Context, url string, file *os.F
 func (d *ChunkDownloader) getFileSize(url string) (int, error) {
 	req, _ := http.NewRequest("HEAD", url, nil)
 	d.setHeaders(req)
-	res, err := http.DefaultClient.Do(req)
+	res, err := d.client.Do(req)
 	if err != nil {
 		return 0, err
 	}
