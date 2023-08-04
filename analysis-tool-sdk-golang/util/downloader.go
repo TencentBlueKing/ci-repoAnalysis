@@ -13,12 +13,26 @@ type Downloader interface {
 }
 
 // DefaultDownloader 默认下载器实现
-type DefaultDownloader struct{}
+type DefaultDownloader struct {
+	client *http.Client
+}
+
+// NewDownloader 创建默认下载器
+func NewDownloader(client *http.Client) Downloader {
+	var c = client
+	if client == nil {
+		c = http.DefaultClient
+	}
+
+	return &DefaultDownloader{
+		client: c,
+	}
+}
 
 // Download 从指定url获取输入流
 func (d *DefaultDownloader) Download(url string) (io.ReadCloser, error) {
 	Info("downloading %s", url)
-	response, err := http.DefaultClient.Get(url)
+	response, err := d.client.Get(url)
 	if err != nil {
 		return nil, err
 	}

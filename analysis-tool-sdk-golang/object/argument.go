@@ -1,8 +1,12 @@
 package object
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
+	"time"
 )
 
 // Arguments 输入参数
@@ -15,6 +19,7 @@ type Arguments struct {
 	InputFilePath    string
 	OutputFilePath   string
 	KeepRunning      bool
+	downloaderClient *http.Client
 }
 
 var args *Arguments
@@ -72,4 +77,37 @@ func (arg *Arguments) Online() bool {
 // ShouldKeepRunning 是否无限循环拉取任务执行
 func (arg *Arguments) ShouldKeepRunning() bool {
 	return arg.Online() && arg.KeepRunning && arg.TaskId == ""
+}
+
+// CustomDownloaderHttpClientDialContext 自定义下载器使用的http客户端DNS解析
+func (arg *Arguments) CustomDownloaderHttpClientDialContext(
+	dialContext func(ctx context.Context, network, addr string) (net.Conn, error),
+) *http.Client {
+	if dialContext == nil {
+		arg.downloaderClient = http.DefaultClient
+	} else {
+		transport := &http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			DialContext:           dialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		arg.downloaderClient = &http.Client{
+			Transport: transport,
+		}
+	}
+	return arg.downloaderClient
+}
+
+// GetDownloaderClient 获取下载器HTTP客户端
+func (arg *Arguments) GetDownloaderClient() *http.Client {
+	if arg.downloaderClient == nil {
+		return http.DefaultClient
+	} else {
+		return arg.downloaderClient
+	}
 }

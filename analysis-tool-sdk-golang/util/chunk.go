@@ -18,6 +18,27 @@ type ChunkDownloader struct {
 	WorkerCount int
 	TmpDir      string
 	Headers     map[string]string
+	client      *http.Client
+}
+
+// NewChunkDownloader 创建分片下载器
+func NewChunkDownloader(
+	workerCount int,
+	tmpDir string,
+	headers map[string]string,
+	client *http.Client,
+) *ChunkDownloader {
+	var c = client
+	if client == nil {
+		c = http.DefaultClient
+	}
+
+	return &ChunkDownloader{
+		WorkerCount: workerCount,
+		TmpDir:      tmpDir,
+		Headers:     headers,
+		client:      c,
+	}
 }
 
 // Download 分片下载
@@ -79,7 +100,7 @@ func (d *ChunkDownloader) doDownload(ctx context.Context, url string, file *os.F
 	rangeHeader := "bytes=" + strconv.Itoa(start) + "-" + strconv.Itoa(end)
 	req.Header.Set("Range", rangeHeader)
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := d.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -117,7 +138,7 @@ func (d *ChunkDownloader) doDownload(ctx context.Context, url string, file *os.F
 func (d *ChunkDownloader) getFileSize(url string) (int, error) {
 	req, _ := http.NewRequest("HEAD", url, nil)
 	d.setHeaders(req)
-	res, err := http.DefaultClient.Do(req)
+	res, err := d.client.Do(req)
 	if err != nil {
 		return 0, err
 	}
