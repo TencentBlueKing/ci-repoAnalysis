@@ -23,9 +23,9 @@ type ChunkDownloader struct {
 
 // NewChunkDownloader 创建分片下载器
 func NewChunkDownloader(
-	WorkerCount int,
-	TmpDir string,
-	Headers map[string]string,
+	workerCount int,
+	tmpDir string,
+	headers map[string]string,
 	client *http.Client,
 ) *ChunkDownloader {
 	var c = client
@@ -34,9 +34,9 @@ func NewChunkDownloader(
 	}
 
 	return &ChunkDownloader{
-		WorkerCount: WorkerCount,
-		TmpDir:      TmpDir,
-		Headers:     Headers,
+		WorkerCount: workerCount,
+		TmpDir:      tmpDir,
+		Headers:     headers,
 		client:      c,
 	}
 }
