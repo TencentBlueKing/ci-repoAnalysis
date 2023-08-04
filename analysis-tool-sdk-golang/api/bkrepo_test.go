@@ -1,11 +1,14 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
+	"net"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestPullTask(t *testing.T) {
@@ -21,6 +24,14 @@ func TestPullTask(t *testing.T) {
 }
 
 func TestCreateDownloader(t *testing.T) {
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return dialer.DialContext(ctx, network, addr)
+	}
+	downloaderClient := (&object.Arguments{}).CustomDownloaderHttpClientDialContext(dialContext)
 	client := createClient()
 	args := make([]object.Argument, 2)
 	args = append(args, object.Argument{
@@ -36,10 +47,18 @@ func TestCreateDownloader(t *testing.T) {
 	client.ToolInput = &object.ToolInput{
 		ToolConfig: object.ToolConfig{Args: args},
 	}
-	_, err := client.createDownloader()
+	downloader, err := client.createDownloader(downloaderClient)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+	reader, err := downloader.Download(os.Getenv("ARTIFACT_URL"))
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		_ = reader.Close()
+	}
+
+	_ = os.RemoveAll(util.WorkDir)
 }
 
 func createClient() *BkRepoClient {

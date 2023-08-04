@@ -121,15 +121,15 @@ func (c *BkRepoClient) Failed(err error) {
 }
 
 // GenerateInputFile 生成待分析文件
-func (c *BkRepoClient) GenerateInputFile() (*os.File, error) {
-	downloader, err := c.createDownloader()
+func (c *BkRepoClient) GenerateInputFile(client *http.Client) (*os.File, error) {
+	downloader, err := c.createDownloader(client)
 	if err != nil {
 		return nil, err
 	}
 	return util.GenerateInputFile(c.ToolInput, downloader)
 }
 
-func (c *BkRepoClient) createDownloader() (util.Downloader, error) {
+func (c *BkRepoClient) createDownloader(client *http.Client) (util.Downloader, error) {
 	var downloader util.Downloader
 	workerCount, _ := c.ToolInput.ToolConfig.GetIntArg(util.ArgKeyDownloaderWorkerCount)
 	if workerCount > 0 {
@@ -151,10 +151,10 @@ func (c *BkRepoClient) createDownloader() (util.Downloader, error) {
 			int(workerCount),
 			util.WorkDir,
 			headers,
-			c.Args.DownloaderClient,
+			client,
 		)
 	} else {
-		downloader = util.NewDownloader(c.Args.DownloaderClient)
+		downloader = util.NewDownloader(client)
 	}
 	return downloader, nil
 }
