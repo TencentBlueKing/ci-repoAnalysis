@@ -45,11 +45,17 @@ func doAnalyze(executor Executor, arguments *object.Arguments) {
 		os.Exit(0)
 	}
 	file, err := client.GenerateInputFile(arguments.GetDownloaderClient())
-	defer file.Close()
 	if err != nil {
 		client.Failed(errors.New("Generate input file failed: " + err.Error()))
 		os.Exit(1)
 	}
+	// 返回的file为nil时表示文件被忽略，直接返回
+	if file == nil {
+		util.Info("Unsupported filename: %s", input.FileUrls[0].Name)
+		client.Finish(object.NewOutput(object.StatusSuccess, new(object.Result)))
+		return
+	}
+	defer file.Close()
 	util.Info("generate input file success")
 	output, err := executor.Execute(&input.ToolConfig, file)
 	if err != nil {
