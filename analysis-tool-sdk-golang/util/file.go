@@ -14,11 +14,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
 const ArgKeyDownloaderWorkerCount = "downloaderWorker"
 const ArgKeyDownloaderWorkerHeaders = "downloaderHeaders"
+const ArgKeyUnsupportedFileNameRegex = "unsupportedFileNameRegex"
 const ArgKeyPkgType = "packageType"
 const PackageTypeDocker = "DOCKER"
 const WorkDir = "/bkrepo/workspace"
@@ -58,6 +60,11 @@ func GenerateInputFile(toolInput *object.ToolInput, downloader Downloader) (*os.
 		return generateImageTar(toolInput, downloader)
 	} else {
 		fileUrl := toolInput.FileUrls[0]
+		fileNameRegex := toolInput.ToolConfig.GetStringArg(ArgKeyUnsupportedFileNameRegex)
+		if matched, err := matchUnsupportedFileNameRegex(fileNameRegex, fileUrl.Name); matched || err != nil {
+			// 不支持的文件类型直接返回
+			return nil, err
+		}
 		file, err := os.Create(filepath.Join(WorkDir, fileUrl.Name))
 		if err != nil {
 			return nil, err
@@ -147,6 +154,13 @@ func Extract(reader io.Reader, dstDir string, perm fs.FileMode) error {
 
 	Info("extract to %s success", dstDir)
 	return nil
+}
+
+func matchUnsupportedFileNameRegex(regex string, fileName string) (bool, error) {
+	if len(regex) == 0 || len(fileName) == 0 {
+		return false, nil
+	}
+	return regexp.MatchString(regex, fileName)
 }
 
 func generateImageTar(toolInput *object.ToolInput, downloader Downloader) (*os.File, error) {
