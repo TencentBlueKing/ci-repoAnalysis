@@ -19,6 +19,7 @@ type Arguments struct {
 	InputFilePath    string
 	OutputFilePath   string
 	KeepRunning      bool
+	Heartbeat        int
 	downloaderClient *http.Client
 }
 
@@ -34,10 +35,11 @@ func newArguments() *Arguments {
 	flag.BoolVar(&args.KeepRunning, "keep-running", true, "是否一直运行，仅在拉取任务模式下生效")
 	flag.StringVar(&args.InputFilePath, "input", "", "输入文件路径")
 	flag.StringVar(&args.OutputFilePath, "output", "", "输出文件路径")
+	flag.IntVar(&args.Heartbeat, "heartbeat", 0, "任务心跳上报间隔，0表示不上报")
 	flag.Parse()
 
 	fmt.Printf(
-		"url: %s, token: %s, taskId: %s, executionCluster: %s, pull-retry: %d, keep-running: %t, "+
+		"url: %s, token: %s, taskId: %s, executionCluster: %s, pull-retry: %d, keep-running: %t, heartbeat: %d"+
 			"inputFilePath: %s, outputFilePath: %s\n",
 		args.Url,
 		args.Token,
@@ -45,6 +47,7 @@ func newArguments() *Arguments {
 		args.ExecutionCluster,
 		args.PullRetry,
 		args.KeepRunning,
+		args.Heartbeat,
 		args.InputFilePath,
 		args.OutputFilePath,
 	)
