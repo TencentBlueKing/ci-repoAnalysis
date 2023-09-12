@@ -64,8 +64,7 @@ func (c *BkRepoClient) Start(ctx context.Context) (*object.ToolInput, error) {
 		if err := c.initToolInput(); err != nil {
 			return nil, err
 		}
-		toolInputJson, _ := json.Marshal(c.ToolInput)
-		util.Info("init tool input success:\n %s", toolInputJson)
+		util.Info("init tool input success: %s", c.ToolInput.TaskId)
 
 		// 是在线任务时，更新任务状态为执行中
 		if c.Args.Online() {
