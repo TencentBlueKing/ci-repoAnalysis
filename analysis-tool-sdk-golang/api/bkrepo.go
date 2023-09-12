@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -57,7 +59,7 @@ func GetClient(args *object.Arguments) *BkRepoClient {
 }
 
 // Start 开始分析
-func (c *BkRepoClient) Start() (*object.ToolInput, error) {
+func (c *BkRepoClient) Start(ctx context.Context) (*object.ToolInput, error) {
 	if c.ToolInput == nil {
 		if err := c.initToolInput(); err != nil {
 			return nil, err
@@ -70,6 +72,9 @@ func (c *BkRepoClient) Start() (*object.ToolInput, error) {
 			if err := c.updateSubtaskStatus(); err != nil {
 				return nil, err
 			}
+			if c.Args.Heartbeat > 0 {
+				go c.heartbeat(ctx)
+			}
 			util.Info("update subtask status success")
 		}
 	}
@@ -77,27 +82,28 @@ func (c *BkRepoClient) Start() (*object.ToolInput, error) {
 }
 
 // Finish 分析结束
-func (c *BkRepoClient) Finish(toolOutput *object.ToolOutput) {
-	toolOutput.TaskId = client.ToolInput.TaskId
+func (c *BkRepoClient) Finish(cancel context.CancelFunc, toolOutput *object.ToolOutput) {
+	toolOutput.TaskId = c.ToolInput.TaskId
+	cancel()
 	if c.Args.Offline() {
 		if err := util.WriteToFile(c.Args.OutputFilePath, toolOutput); err != nil {
 			panic("Finish analyze failed: " + err.Error())
 		}
 	} else {
-		url := c.Args.Url + analystTemporaryPrefix + "/scan/report"
+		reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/report"
 		result := StandardScanExecutorResult{"standard", toolOutput.Status, toolOutput}
 		reqBody, err := json.Marshal(
 			ReportResultRequest{
-				SubTaskId:          client.ToolInput.TaskId,
+				SubTaskId:          c.ToolInput.TaskId,
 				ScanStatus:         toolOutput.Status,
 				ScanExecutorResult: &result,
-				Token:              client.Args.Token,
+				Token:              c.Args.Token,
 			},
 		)
 		if err != nil {
 			panic("Finish analyze failed: " + err.Error())
 		}
-		req, err := http.NewRequest("POST", url, bytes.NewReader(reqBody))
+		req, err := http.NewRequest("POST", reqUrl, bytes.NewReader(reqBody))
 		if err != nil {
 			panic("Finish analyze failed: " + err.Error())
 		}
@@ -114,10 +120,10 @@ func (c *BkRepoClient) Finish(toolOutput *object.ToolOutput) {
 	c.ToolInput = nil
 }
 
-func (c *BkRepoClient) Failed(err error) {
+func (c *BkRepoClient) Failed(cancel context.CancelFunc, err error) {
 	util.Error("analyze failed %s", err)
 	output := object.NewFailedOutput(err)
-	c.Finish(output)
+	c.Finish(cancel, output)
 }
 
 // GenerateInputFile 生成待分析文件
@@ -161,8 +167,8 @@ func (c *BkRepoClient) createDownloader(client *http.Client) (util.Downloader, e
 
 // updateSubtaskStatus 更新任务状态为执行中
 func (c *BkRepoClient) updateSubtaskStatus() error {
-	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + c.ToolInput.TaskId + "/status?token=" + c.Args.Token + "&status=EXECUTING"
-	request, err := http.NewRequest("PUT", url, nil)
+	reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + c.ToolInput.TaskId + "/status?token=" + c.Args.Token + "&status=EXECUTING"
+	request, err := http.NewRequest("PUT", reqUrl, nil)
 	if err != nil {
 		return err
 	}
@@ -185,6 +191,38 @@ func (c *BkRepoClient) updateSubtaskStatus() error {
 			res.Message + "code: " + strconv.Itoa(res.Code))
 	}
 	return nil
+}
+
+func (c *BkRepoClient) heartbeat(ctx context.Context) {
+	ticker := time.NewTicker(time.Duration(c.Args.Heartbeat) * time.Second)
+	taskId := c.ToolInput.TaskId
+	reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + taskId + "/heartbeat"
+	data := url.Values{}
+	data.Set("token", c.Args.Token)
+	body := data.Encode()
+	for {
+		select {
+		case <-ctx.Done():
+			util.Info("stop heartbeat of task: " + taskId)
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			request, err := http.NewRequest(http.MethodPost, reqUrl, strings.NewReader(body))
+			if err != nil {
+				util.Error("heartbeat failed: " + err.Error())
+			}
+			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			response, err := http.DefaultClient.Do(request)
+			if err != nil {
+				util.Error("heartbeat failed: " + err.Error())
+			}
+			if response.StatusCode != http.StatusOK {
+				b, _ := io.ReadAll(response.Body)
+				util.Error("heartbeat failed: " + response.Status + ", message: " + string(b))
+			}
+			response.Body.Close()
+		}
+	}
 }
 
 // initToolInput 从本地加载input.json或从服务端拉取toolInput信息
@@ -215,13 +253,13 @@ func (c *BkRepoClient) initToolInput() error {
 
 // fetchToolInput 从制品分析服务拉取工具输入
 func (c *BkRepoClient) fetchToolInput(taskId string) (*object.ToolInput, error) {
-	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + taskId + "/input?token=" + c.Args.Token
-	return c.doFetchToolInput(url)
+	reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + taskId + "/input?token=" + c.Args.Token
+	return c.doFetchToolInput(reqUrl)
 }
 
 // pullTooInput 从制品分析服务拉取工具输入
 func (c *BkRepoClient) pullToolInput() (*object.ToolInput, error) {
-	url := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/input?executionCluster=" + c.Args.ExecutionCluster +
+	reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/input?executionCluster=" + c.Args.ExecutionCluster +
 		"&token=" + c.Args.Token
 
 	var toolInput *object.ToolInput = nil
@@ -232,7 +270,7 @@ func (c *BkRepoClient) pullToolInput() (*object.ToolInput, error) {
 			return nil, err
 		}
 		util.Info("try to pull subtask...")
-		toolInput, err = c.doFetchToolInput(url)
+		toolInput, err = c.doFetchToolInput(reqUrl)
 		pullRetry--
 		if toolInput == nil || toolInput.TaskId == "" {
 			time.Sleep(5 * time.Second)

@@ -61,6 +61,18 @@ func TestCreateDownloader(t *testing.T) {
 	_ = os.RemoveAll(util.WorkDir)
 }
 
+func TestHeartbeat(t *testing.T) {
+	client := createClient()
+	client.Args.Heartbeat = 2
+	client.ToolInput = &object.ToolInput{}
+	client.ToolInput.TaskId = os.Getenv("TASK_ID")
+	ctx, cancel := context.WithCancel(context.Background())
+	go client.heartbeat(ctx)
+	time.Sleep(10 * time.Second)
+	cancel()
+	time.Sleep(5 * time.Second)
+}
+
 func createClient() *BkRepoClient {
 	client := BkRepoClient{}
 	client.Args = &object.Arguments{

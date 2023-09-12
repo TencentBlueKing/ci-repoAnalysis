@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"context"
 	"errors"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/api"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
@@ -36,7 +37,8 @@ func Analyze(executor Executor) {
 
 func doAnalyze(executor Executor, arguments *object.Arguments) {
 	client := api.GetClient(arguments)
-	input, err := client.Start()
+	ctx, cancel := context.WithCancel(context.Background())
+	input, err := client.Start(ctx)
 	if err != nil {
 		panic("Start analyze failed: " + err.Error())
 	}
@@ -46,21 +48,21 @@ func doAnalyze(executor Executor, arguments *object.Arguments) {
 	}
 	file, err := client.GenerateInputFile(arguments.GetDownloaderClient())
 	if err != nil {
-		client.Failed(errors.New("Generate input file failed: " + err.Error()))
+		client.Failed(cancel, errors.New("Generate input file failed: "+err.Error()))
 		os.Exit(1)
 	}
 	// 返回的file为nil时表示文件被忽略，直接返回
 	if file == nil {
 		util.Info("Unsupported filename: %s", input.FileUrls[0].Name)
-		client.Finish(object.NewOutput(object.StatusSuccess, new(object.Result)))
+		client.Finish(cancel, object.NewOutput(object.StatusSuccess, new(object.Result)))
 		return
 	}
 	defer file.Close()
 	util.Info("generate input file success")
 	output, err := executor.Execute(&input.ToolConfig, file)
 	if err != nil {
-		client.Failed(errors.New("Execute analysis failed: " + err.Error()))
+		client.Failed(cancel, errors.New("Execute analysis failed: "+err.Error()))
 	} else {
-		client.Finish(output)
+		client.Finish(cancel, output)
 	}
 }
