@@ -1,5 +1,5 @@
-github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang v0.0.27 h1:7ebEMRpNv976qVJUTaqXil3PtycCGVU75klLdKH4Ja0=
-github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang v0.0.27/go.mod h1:gaNOplWKoBM1MBtwllE4y/x1UfXdvlBgLUrECkdnLPE=
+github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang v0.0.28 h1:XLPkvJYWpLExlLowXdlY1SAYsiGmqEqb21MfXHF57tg=
+github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang v0.0.28/go.mod h1:gaNOplWKoBM1MBtwllE4y/x1UfXdvlBgLUrECkdnLPE=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/hashicorp/go-cleanhttp v0.5.2 h1:035FKYIWjmULyFRBKPs8TBQoi0x6d9G4xc9neXJWAZQ=
 github.com/hashicorp/go-cleanhttp v0.5.2/go.mod h1:kO/YDlP8L1346E6Sodw+PrpBSV4/SoxCXGY6BqNFT48=
