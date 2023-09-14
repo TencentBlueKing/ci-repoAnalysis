@@ -31,7 +31,7 @@ func TestCreateDownloader(t *testing.T) {
 	dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
 		return dialer.DialContext(ctx, network, addr)
 	}
-	downloaderClient := (&object.Arguments{}).CustomDownloaderHttpClientDialContext(dialContext)
+	util.SetDefault(util.CreateHttpClient(util.CreateTransport(dialContext)))
 	client := createClient()
 	args := make([]object.Argument, 2)
 	args = append(args, object.Argument{
@@ -47,7 +47,7 @@ func TestCreateDownloader(t *testing.T) {
 	client.ToolInput = &object.ToolInput{
 		ToolConfig: object.ToolConfig{Args: args},
 	}
-	downloader, err := client.createDownloader(downloaderClient)
+	downloader, err := client.createDownloader()
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

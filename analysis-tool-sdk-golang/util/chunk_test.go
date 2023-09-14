@@ -14,15 +14,10 @@ func TestDownload(t *testing.T) {
 	errorToPanic(func() error { return os.RemoveAll(tmpDir) })
 	errorToPanic(func() error { return os.Mkdir(tmpDir, 0766) })
 
-	downloader := NewChunkDownloader(
-		8,
-		tmpDir,
-		map[string]string{
-			"X-BKREPO-DOWNLOAD-REDIRECT-TO": "INNERCOS",
-			"Authorization":                 os.Getenv("AUTHORIZATION"),
-		},
-		nil,
-	)
+	downloader := NewChunkDownloader(8, tmpDir, map[string]string{
+		"X-BKREPO-DOWNLOAD-REDIRECT-TO": "INNERCOS",
+		"Authorization":                 os.Getenv("AUTHORIZATION"),
+	})
 	file, err := downloader.Download(os.Getenv("URL"))
 	h := sha256.New()
 	if _, err := io.Copy(h, file); err != nil {
