@@ -18,10 +18,7 @@ type StandardAdapterExecutor struct {
 // Execute 执行扫描
 func (e StandardAdapterExecutor) Execute(_ *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
 	// 将toolInput写入/bkrepo/workspace/input.json
-	toolInput, err := api.GetClient(object.GetArgs()).Start()
-	if err != nil {
-		return nil, err
-	}
+	toolInput := api.GetClient(object.GetArgs()).ToolInput
 	newToolInput := &object.ToolInput{
 		TaskId:     toolInput.TaskId,
 		ToolConfig: toolInput.ToolConfig,
@@ -44,7 +41,7 @@ func (e StandardAdapterExecutor) Execute(_ *object.ToolConfig, file *os.File) (*
 		args = append(args, splitCmd[1:]...)
 	}
 	args = append(args, "--input", toolInputFile, "--output", toolOutputFile)
-	err = util.ExecAndLog(cmd, args, e.WorkDir)
+	err := util.ExecAndLog(cmd, args, e.WorkDir)
 	if err != nil {
 		return nil, err
 	}
