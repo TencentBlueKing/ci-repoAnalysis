@@ -49,7 +49,15 @@ func ExecAndLog(name string, args []string, workDir string) error {
 	}()
 
 	if err := cmd.Wait(); err != nil {
-		return errors.New(strings.Join(append(logs[:], err.Error()), "\n"))
+		errMsg := make([]string, 0, keepLine)
+		for i := range logs {
+			l := logs[i]
+			if len(l) > 0 {
+				errMsg = append(errMsg, l)
+			}
+		}
+		errMsg = append(errMsg, err.Error())
+		return errors.New(strings.Join(errMsg, "\n"))
 	}
 	return nil
 }
