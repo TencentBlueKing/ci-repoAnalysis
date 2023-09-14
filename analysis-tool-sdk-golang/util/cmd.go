@@ -2,7 +2,10 @@ package util
 
 import (
 	"bufio"
+	"errors"
+	"fmt"
 	"os/exec"
+	"strings"
 )
 
 // ExecAndLog 执行命令并实时输出日志
@@ -25,9 +28,17 @@ func ExecAndLog(name string, args []string, workDir string) error {
 		return err
 	}
 
+	// 用于出错时上报最后[keepLine]行日志
+	const keepLine = 10
+	logs := [keepLine]string{}
 	go func() {
+		i := 0
+		var line string
 		for errScanner.Scan() {
-			Info(errScanner.Text() + "\n")
+			line = errScanner.Text()
+			Info(line + "\n")
+			logs[i%keepLine] = fmt.Sprintf("%d    : %s", i, line)
+			i++
 		}
 	}()
 
@@ -38,7 +49,7 @@ func ExecAndLog(name string, args []string, workDir string) error {
 	}()
 
 	if err := cmd.Wait(); err != nil {
-		return err
+		return errors.New(strings.Join(append(logs[:], err.Error()), "\n"))
 	}
 	return nil
 }
