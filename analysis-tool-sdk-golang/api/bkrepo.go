@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
+	"github.com/hashicorp/go-retryablehttp"
 	"io"
 	"net/http"
 	"net/url"
@@ -102,16 +103,16 @@ func (c *BkRepoClient) Finish(cancel context.CancelFunc, toolOutput *object.Tool
 		if err != nil {
 			panic("Finish analyze failed: " + err.Error())
 		}
-		req, err := http.NewRequest("POST", reqUrl, bytes.NewReader(reqBody))
+		req, err := retryablehttp.NewRequest("POST", reqUrl, bytes.NewReader(reqBody))
 		if err != nil {
 			panic("Finish analyze failed: " + err.Error())
 		}
 		req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-		res, err := http.DefaultClient.Do(req)
+		res, err := util.DefaultClient.Do(req)
 		if err != nil {
 			panic("Report analysis result failed, taskId: " + toolOutput.TaskId + ", err: " + err.Error())
 		}
-		defer res.Body.Close()
+		defer util.DrainBody(res.Body)
 		if res.StatusCode != 200 {
 			panic("Report analysis result failed, taskId: " + toolOutput.TaskId)
 		}
@@ -126,15 +127,15 @@ func (c *BkRepoClient) Failed(cancel context.CancelFunc, err error) {
 }
 
 // GenerateInputFile 生成待分析文件
-func (c *BkRepoClient) GenerateInputFile(client *http.Client) (*os.File, error) {
-	downloader, err := c.createDownloader(client)
+func (c *BkRepoClient) GenerateInputFile() (*os.File, error) {
+	downloader, err := c.createDownloader()
 	if err != nil {
 		return nil, err
 	}
 	return util.GenerateInputFile(c.ToolInput, downloader)
 }
 
-func (c *BkRepoClient) createDownloader(client *http.Client) (util.Downloader, error) {
+func (c *BkRepoClient) createDownloader() (util.Downloader, error) {
 	var downloader util.Downloader
 	workerCount, _ := c.ToolInput.ToolConfig.GetIntArg(util.ArgKeyDownloaderWorkerCount)
 	if workerCount > 0 {
@@ -152,14 +153,9 @@ func (c *BkRepoClient) createDownloader(client *http.Client) (util.Downloader, e
 			}
 		}
 		// 创建下载器并生成待分析文件
-		downloader = util.NewChunkDownloader(
-			int(workerCount),
-			util.WorkDir,
-			headers,
-			client,
-		)
+		downloader = util.NewChunkDownloader(int(workerCount), util.WorkDir, headers)
 	} else {
-		downloader = util.NewDownloader(client)
+		downloader = util.NewDownloader()
 	}
 	return downloader, nil
 }
@@ -167,15 +163,15 @@ func (c *BkRepoClient) createDownloader(client *http.Client) (util.Downloader, e
 // updateSubtaskStatus 更新任务状态为执行中
 func (c *BkRepoClient) updateSubtaskStatus() error {
 	reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + c.ToolInput.TaskId + "/status?token=" + c.Args.Token + "&status=EXECUTING"
-	request, err := http.NewRequest("PUT", reqUrl, nil)
+	request, err := retryablehttp.NewRequest("PUT", reqUrl, nil)
 	if err != nil {
 		return err
 	}
-	response, err := http.DefaultClient.Do(request)
+	response, err := util.DefaultClient.Do(request)
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer util.DrainBody(response.Body)
 	if response.StatusCode != 200 {
 		return errors.New("更新扫描任务[" + c.ToolInput.TaskId + "]状态失败, status: " + response.Status)
 	}
@@ -206,20 +202,21 @@ func (c *BkRepoClient) heartbeat(ctx context.Context) {
 			ticker.Stop()
 			return
 		case <-ticker.C:
-			request, err := http.NewRequest(http.MethodPost, reqUrl, strings.NewReader(body))
+			request, err := retryablehttp.NewRequest(http.MethodPost, reqUrl, strings.NewReader(body))
 			if err != nil {
 				util.Error("heartbeat failed: " + err.Error())
 			}
 			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-			response, err := http.DefaultClient.Do(request)
+			response, err := util.DefaultClient.Do(request)
 			if err != nil {
 				util.Error("heartbeat failed: " + err.Error())
+				return
 			}
 			if response.StatusCode != http.StatusOK {
 				b, _ := io.ReadAll(response.Body)
 				util.Error("heartbeat failed: " + response.Status + ", message: " + string(b))
 			}
-			response.Body.Close()
+			util.DrainBody(response.Body)
 		}
 	}
 }
@@ -280,11 +277,11 @@ func (c *BkRepoClient) pullToolInput() (*object.ToolInput, error) {
 }
 
 func (c *BkRepoClient) doFetchToolInput(url string) (*object.ToolInput, error) {
-	response, err := http.DefaultClient.Get(url)
+	response, err := util.DefaultClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer util.DrainBody(response.Body)
 	if response.StatusCode != http.StatusOK {
 		errBody, _ := io.ReadAll(response.Body)
 		errMsg := fmt.Sprintf(

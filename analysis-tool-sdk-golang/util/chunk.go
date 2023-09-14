@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"net/http"
@@ -18,26 +19,14 @@ type ChunkDownloader struct {
 	WorkerCount int
 	TmpDir      string
 	Headers     map[string]string
-	client      *http.Client
 }
 
 // NewChunkDownloader 创建分片下载器
-func NewChunkDownloader(
-	workerCount int,
-	tmpDir string,
-	headers map[string]string,
-	client *http.Client,
-) *ChunkDownloader {
-	var c = client
-	if client == nil {
-		c = http.DefaultClient
-	}
-
+func NewChunkDownloader(workerCount int, tmpDir string, headers map[string]string) *ChunkDownloader {
 	return &ChunkDownloader{
 		WorkerCount: workerCount,
 		TmpDir:      tmpDir,
 		Headers:     headers,
-		client:      c,
 	}
 }
 
@@ -92,7 +81,7 @@ func (d *ChunkDownloader) chunkDownload(url string, outputFile *os.File) error {
 func (d *ChunkDownloader) doDownload(ctx context.Context, url string, file *os.File, start int, end int) error {
 	defer timer(fmt.Sprintf("download chunk %d-%d success,", start, end))()
 	Info("start download chunk %d-%d", start, end)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := retryablehttp.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
@@ -100,11 +89,11 @@ func (d *ChunkDownloader) doDownload(ctx context.Context, url string, file *os.F
 	rangeHeader := "bytes=" + strconv.Itoa(start) + "-" + strconv.Itoa(end)
 	req.Header.Set("Range", rangeHeader)
 
-	res, err := d.client.Do(req)
+	res, err := DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer DrainBody(res.Body)
 
 	if res.StatusCode != http.StatusPartialContent {
 		return errors.New("download chunk failed: " + res.Status)
@@ -136,13 +125,13 @@ func (d *ChunkDownloader) doDownload(ctx context.Context, url string, file *os.F
 }
 
 func (d *ChunkDownloader) getFileSize(url string) (int, error) {
-	req, _ := http.NewRequest("HEAD", url, nil)
+	req, _ := retryablehttp.NewRequest("HEAD", url, nil)
 	d.setHeaders(req)
-	res, err := d.client.Do(req)
+	res, err := DefaultClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
-	defer res.Body.Close()
+	defer DrainBody(res.Body)
 
 	if res.StatusCode != http.StatusOK {
 		return 0, errors.New("get file size failed, status: " + res.Status)
@@ -157,7 +146,7 @@ func (d *ChunkDownloader) getFileSize(url string) (int, error) {
 	return size, nil
 }
 
-func (d *ChunkDownloader) setHeaders(req *http.Request) {
+func (d *ChunkDownloader) setHeaders(req *retryablehttp.Request) {
 	for k, v := range d.Headers {
 		req.Header.Set(k, v)
 	}

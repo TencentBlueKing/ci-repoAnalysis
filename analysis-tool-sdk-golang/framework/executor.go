@@ -46,7 +46,7 @@ func doAnalyze(executor Executor, arguments *object.Arguments) {
 		util.Info("no subtask found, exit")
 		os.Exit(0)
 	}
-	file, err := client.GenerateInputFile(arguments.GetDownloaderClient())
+	file, err := client.GenerateInputFile()
 	if err != nil {
 		client.Failed(cancel, errors.New("Generate input file failed: "+err.Error()))
 		os.Exit(1)
