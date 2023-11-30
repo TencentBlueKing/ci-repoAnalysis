@@ -60,7 +60,7 @@ func GetClient(args *object.Arguments) *BkRepoClient {
 }
 
 // Start 开始分析
-func (c *BkRepoClient) Start(ctx context.Context) (*object.ToolInput, error) {
+func (c *BkRepoClient) Start(ctx context.Context, cancel context.CancelFunc) (*object.ToolInput, error) {
 	if c.ToolInput == nil {
 		if err := c.initToolInput(); err != nil {
 			return nil, err
@@ -73,7 +73,7 @@ func (c *BkRepoClient) Start(ctx context.Context) (*object.ToolInput, error) {
 				return nil, err
 			}
 			if c.Args.Heartbeat > 0 {
-				go c.heartbeat(ctx)
+				go c.heartbeat(ctx, cancel)
 			}
 			util.Info("update subtask status success")
 		}
@@ -188,7 +188,7 @@ func (c *BkRepoClient) updateSubtaskStatus() error {
 	return nil
 }
 
-func (c *BkRepoClient) heartbeat(ctx context.Context) {
+func (c *BkRepoClient) heartbeat(ctx context.Context, cancel context.CancelFunc) {
 	ticker := time.NewTicker(time.Duration(c.Args.Heartbeat) * time.Second)
 	taskId := c.ToolInput.TaskId
 	reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + taskId + "/heartbeat"
@@ -213,6 +213,7 @@ func (c *BkRepoClient) heartbeat(ctx context.Context) {
 				return
 			}
 			if response.StatusCode != http.StatusOK {
+				cancel()
 				b, _ := io.ReadAll(response.Body)
 				util.Error("heartbeat failed: " + response.Status + ", message: " + string(b))
 			}

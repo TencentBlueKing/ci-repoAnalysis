@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -9,8 +10,8 @@ import (
 )
 
 // ExecAndLog 执行命令并实时输出日志
-func ExecAndLog(name string, args []string, workDir string) error {
-	cmd := exec.Command(name, args...)
+func ExecAndLog(ctx context.Context, name string, args []string, workDir string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
 
 	if len(workDir) > 0 {
 		cmd.Dir = workDir
