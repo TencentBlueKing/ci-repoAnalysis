@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,7 @@ import (
 type TrivyExecutor struct{}
 
 // Execute 执行分析
-func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
+func (e TrivyExecutor) Execute(ctx context.Context, config *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
 	offline, err := config.GetBoolArg(constant.ConfigOffline)
 	if err != nil {
 		offline = len(config.GetStringArg(constant.ArgDbDownloadUrl)) > 0
@@ -27,7 +28,7 @@ func (e TrivyExecutor) Execute(config *object.ToolConfig, file *os.File) (*objec
 		}
 	}
 
-	if err := execTrivy(file.Name(), offline, config); err != nil {
+	if err := execTrivy(ctx, file.Name(), offline, config); err != nil {
 		return nil, err
 	}
 	return transformOutputJson()
@@ -55,7 +56,7 @@ func downloadAllDB(config *object.ToolConfig) error {
 	return nil
 }
 
-func execTrivy(fileName string, offline bool, config *object.ToolConfig) error {
+func execTrivy(ctx context.Context, fileName string, offline bool, config *object.ToolConfig) error {
 	// trivy --cache-dir /root/.cache/trivy image --input filePath -f json
 	//       -o /bkrepo/workspace/trivy-output.json --skip-db-update --offline-scan
 
@@ -99,7 +100,7 @@ func execTrivy(fileName string, offline bool, config *object.ToolConfig) error {
 		args = append(args, constant.FlagSecretConfig, constant.SecretRuleFilePath)
 	}
 
-	if err := util.ExecAndLog(constant.CmdTrivy, args, ""); err != nil {
+	if err := util.ExecAndLog(ctx, constant.CmdTrivy, args, ""); err != nil {
 		return err
 	}
 	return nil
