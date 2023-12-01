@@ -3,6 +3,7 @@ package framework
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/api"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
@@ -60,9 +61,15 @@ func doAnalyze(executor Executor, arguments *object.Arguments) {
 	}
 	defer file.Close()
 	util.Info("generate input file success")
-	output, err := executor.Execute(ctx, &input.ToolConfig, file)
+	execCtx, execCancel := context.WithTimeout(ctx, client.ToolInput.MaxTime())
+	defer execCancel()
+	output, err := executor.Execute(execCtx, &input.ToolConfig, file)
 	if err != nil {
-		client.Failed(cancel, errors.New("Execute analysis failed: "+err.Error()))
+		errMsg := "Execute analysis failed: " + err.Error()
+		if ctx.Err() != nil {
+			errMsg = fmt.Sprintf("%s, ctx err[%s]", errMsg, ctx.Err().Error())
+		}
+		client.Failed(cancel, errors.New(errMsg))
 	} else {
 		client.Finish(cancel, output)
 	}
