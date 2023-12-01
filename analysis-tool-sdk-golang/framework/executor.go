@@ -3,6 +3,7 @@ package framework
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/api"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
@@ -13,7 +14,7 @@ import (
 type Executor interface {
 	// Execute 框架会调用该函数执行扫描，传入的参数config为工具相关配置，file为待分析的制品
 	// 扫描成功时返回toolOutput，出错时返回error，工具框架会自动上报或输出结果给制品分析服务
-	Execute(config *object.ToolConfig, file *os.File) (*object.ToolOutput, error)
+	Execute(ctx context.Context, config *object.ToolConfig, file *os.File) (*object.ToolOutput, error)
 }
 
 // Analyze 执行分析
@@ -38,18 +39,19 @@ func Analyze(executor Executor) {
 func doAnalyze(executor Executor, arguments *object.Arguments) {
 	client := api.GetClient(arguments)
 	ctx, cancel := context.WithCancel(context.Background())
-	input, err := client.Start(ctx)
+	defer cancel()
+	input, err := client.Start(ctx, cancel)
 	if err != nil {
 		panic("Start analyze failed: " + err.Error())
 	}
 	if input == nil || input.TaskId == "" {
 		util.Info("no subtask found, exit")
-		os.Exit(0)
+		return
 	}
 	file, err := client.GenerateInputFile()
 	if err != nil {
 		client.Failed(cancel, errors.New("Generate input file failed: "+err.Error()))
-		os.Exit(1)
+		return
 	}
 	// 返回的file为nil时表示文件被忽略，直接返回
 	if file == nil {
@@ -59,9 +61,15 @@ func doAnalyze(executor Executor, arguments *object.Arguments) {
 	}
 	defer file.Close()
 	util.Info("generate input file success")
-	output, err := executor.Execute(&input.ToolConfig, file)
+	execCtx, execCancel := context.WithTimeout(ctx, client.ToolInput.MaxTime())
+	defer execCancel()
+	output, err := executor.Execute(execCtx, &input.ToolConfig, file)
 	if err != nil {
-		client.Failed(cancel, errors.New("Execute analysis failed: "+err.Error()))
+		errMsg := "Execute analysis failed: " + err.Error()
+		if ctx.Err() != nil {
+			errMsg = fmt.Sprintf("%s, ctx err[%s]", errMsg, ctx.Err().Error())
+		}
+		client.Failed(cancel, errors.New(errMsg))
 	} else {
 		client.Finish(cancel, output)
 	}

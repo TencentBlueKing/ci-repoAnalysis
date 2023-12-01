@@ -2,6 +2,7 @@ package object
 
 import (
 	"strconv"
+	"time"
 )
 
 // ToolInput 工具输入
@@ -89,4 +90,10 @@ func (toolInput *ToolInput) FileUrlMap() map[string]FileUrl {
 		fileUrlMap[url.Sha256] = url
 	}
 	return fileUrlMap
+}
+
+// MaxTime 获取允许执行的最长时间
+func (toolInput *ToolInput) MaxTime() time.Duration {
+	maxTime, _ := toolInput.ToolConfig.GetIntArg("maxTime")
+	return time.Duration(maxTime) * time.Millisecond
 }
