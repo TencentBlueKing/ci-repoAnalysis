@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/api"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
@@ -16,7 +17,11 @@ type StandardAdapterExecutor struct {
 }
 
 // Execute 执行扫描
-func (e StandardAdapterExecutor) Execute(_ *object.ToolConfig, file *os.File) (*object.ToolOutput, error) {
+func (e StandardAdapterExecutor) Execute(
+	ctx context.Context,
+	_ *object.ToolConfig,
+	file *os.File,
+) (*object.ToolOutput, error) {
 	// 将toolInput写入/bkrepo/workspace/input.json
 	toolInput := api.GetClient(object.GetArgs()).ToolInput
 	newToolInput := &object.ToolInput{
@@ -41,7 +46,7 @@ func (e StandardAdapterExecutor) Execute(_ *object.ToolConfig, file *os.File) (*
 		args = append(args, splitCmd[1:]...)
 	}
 	args = append(args, "--input", toolInputFile, "--output", toolOutputFile)
-	err := util.ExecAndLog(cmd, args, e.WorkDir)
+	err := util.ExecAndLog(ctx, cmd, args, e.WorkDir)
 	if err != nil {
 		return nil, err
 	}
