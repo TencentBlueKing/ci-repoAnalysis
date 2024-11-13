@@ -7,13 +7,17 @@ import (
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
 	"os"
-	"strings"
 )
+
+type CmdBuilder interface {
+	// Build 生成扫描执行器启动命令, 返回（命令名，参数列表）
+	Build(input *object.ToolInput) (string, []string, error)
+}
 
 // StandardAdapterExecutor 标准扫描器适配器
 type StandardAdapterExecutor struct {
-	Cmd     string
-	WorkDir string
+	CmdBuilder CmdBuilder
+	WorkDir    string
 }
 
 // Execute 执行扫描
@@ -38,15 +42,12 @@ func (e StandardAdapterExecutor) Execute(
 
 	// 执行扫描
 	toolOutputFile := util.WorkDir + "/output.json"
-	var args []string
-	cmd := e.Cmd
-	splitCmd := strings.Split(e.Cmd, " ")
-	if len(splitCmd) > 1 {
-		cmd = splitCmd[0]
-		args = append(args, splitCmd[1:]...)
+	cmd, args, err := e.CmdBuilder.Build(newToolInput)
+	if err != nil {
+		return nil, err
 	}
 	args = append(args, "--input", toolInputFile, "--output", toolOutputFile)
-	err := util.ExecAndLog(ctx, cmd, args, e.WorkDir)
+	err = util.ExecAndLog(ctx, cmd, args, e.WorkDir)
 	if err != nil {
 		return nil, err
 	}
