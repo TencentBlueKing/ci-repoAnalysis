@@ -72,7 +72,7 @@ func npmPrepare(file *os.File) error {
 
 	// 替换 package-lock.json中的file:xxx 为实际版本号
 	sedExp := fmt.Sprintf(
-		"s/\\\"%s\\\": \\\"file:%s\\\"/\\\"%s\\\": \\\"%s\\\"/",
+		"s|\\\"%s\\\": \\\"file:%s\\\"|\\\"%s\\\": \\\"%s\\\"|",
 		pkgName, fileBaseName, pkgName, pkgVersion,
 	)
 	if err := sed(sedExp, filepath.Join(workDir, "package-lock.json")); err != nil {
@@ -83,7 +83,7 @@ func npmPrepare(file *os.File) error {
 	}
 
 	sedExp = fmt.Sprintf(
-		"s/\\\"version\\\": \\\"file:%s\\\"/\\\"version\\\": \\\"%s\\\"/",
+		"s|\\\"version\\\": \\\"file:%s\\\"|\\\"version\\\": \\\"%s\\\"|",
 		fileBaseName, pkgVersion,
 	)
 	if err := sed(sedExp, filepath.Join(workDir, "package-lock.json")); err != nil {
